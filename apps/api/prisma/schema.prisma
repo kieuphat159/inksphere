@@ -2,8 +2,9 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
+  engineType = "bundled"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
@@ -17,7 +18,7 @@ model User {
   email     String
   bio       String?
   avatar    String?
-  password  String
+  password  String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   posts     Post[]
