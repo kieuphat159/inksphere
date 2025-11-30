@@ -2,6 +2,29 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+type User {
+  id: Int!
+  name: String!
+  email: String!
+  bio: String
+  avatar: String
+  posts: [Post!]!
+  comments: [CommentEntity!]!
+}
+
+type CommentEntity {
+  id: Int!
+  content: String!
+  post: Post!
+  author: User!
+}
+
+type Tag {
+  id: Int!
+  name: String!
+  posts: [Post!]!
+}
+
 type Post {
   id: Int!
   title: String!
@@ -11,6 +34,9 @@ type Post {
   published: Boolean!
   createdAt: DateTime!
   updatedAt: DateTime!
+  author: User!
+  tags: [Tag!]!
+  comments: CommentEntity!
 }
 
 """
@@ -20,4 +46,16 @@ scalar DateTime
 
 type Query {
   posts: [Post!]!
+}
+
+type Mutation {
+  createUser(createUserInput: CreateUserInput!): User!
+}
+
+input CreateUserInput {
+  name: String!
+  email: String!
+  password: String!
+  bio: String
+  avatar: String
 }
