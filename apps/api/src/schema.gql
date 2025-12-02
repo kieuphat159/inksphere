@@ -50,6 +50,7 @@ type Query {
 
 type Mutation {
   createUser(createUserInput: CreateUserInput!): User!
+  signin(signInInput: SignInInput!): String!
 }
 
 input CreateUserInput {
@@ -58,4 +59,9 @@ input CreateUserInput {
   password: String!
   bio: String
   avatar: String
+}
+
+input SignInInput {
+  email: String!
+  password: String!
 }
