@@ -1,4 +1,5 @@
 import type { Post } from "@/lib/types/modelTypes";
+import PostCard from "./postCard";
 
 type Props = {
     posts:  Post[];
@@ -6,7 +7,7 @@ type Props = {
 
 export default function Post(props: Props) {
     return (
-        <section>
+        <section className="container m-8 max-w-5xl mx-auto">
             <h2 className="text-5xl font-bold text-center text-gray-600 leading-tight mt-5">
                 Latest Posts
             </h2>
@@ -14,7 +15,7 @@ export default function Post(props: Props) {
 
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                posts here
+                {props.posts.map(post => <PostCard key={post.id} {...post} />)}
             </div>
         </section>
     )
