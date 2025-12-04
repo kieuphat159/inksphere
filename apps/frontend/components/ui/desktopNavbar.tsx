@@ -21,7 +21,7 @@ const DesktopNavbar = (props: Props) => {
     const isScrolled = scrollPosition > 10;
 
     return (
-        <nav className={cn("fixed transition-colors w-full z-31 text-white top-0 block", {
+        <nav className={cn("hidden fixed transition-colors w-full z-31 text-white top-0 md:block", {
             "bg-white text-gray-700 shadow-md": isScrolled
         })}>
             <div className="flex items-center px-4 py-4 container">
