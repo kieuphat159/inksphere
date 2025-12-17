@@ -6,6 +6,7 @@ import { DEFAULT_PAGE_SIZE } from 'src/constant';
 
 @Injectable()
 export class PostService {
+  
 
   constructor(private prisma: PrismaService) {
 
@@ -26,5 +27,15 @@ export class PostService {
 
   async count() {
     return await this.prisma.post.count();
+  }
+  
+  async findOne(id: number) {
+    return await this.prisma.post.findFirst({
+      where: { id },
+      include: {
+        author: true,
+        tags: true,
+      }
+    });
   }
 }

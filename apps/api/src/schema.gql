@@ -54,6 +54,7 @@ type AuthPayload {
 type Query {
   posts(skip: Float, take: Float): [Post!]!
   postsCount: Int!
+  getPostById(id: Int!): Post!
 }
 
 type Mutation {
