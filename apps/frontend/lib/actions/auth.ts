@@ -7,6 +7,7 @@ import { CREATE_USER_MUTATION, SIGN_IN_MUTATION } from "../gqlQueries";
 import { redirect } from "next/navigation";
 import { LoginFormSchema } from "../zodSchemas/loginFormSchemas";
 import { revalidatePath } from "next/cache";
+import { createSession } from "../session";
 
 export async function signUp(state: SignUpFormState, formData: FormData): Promise<SignUpFormState> {
     const validatedFields = signUpFormSchema.safeParse(Object.fromEntries(formData.entries()));
@@ -44,11 +45,19 @@ export async function signIn(state: SignUpFormState, formData: FormData): Promis
         }
     });
 
-    if (data.errors) return {
+    if (!data?.signin) return {
         data: Object.fromEntries(formData.entries()),
         errors: {},
         message: "Something went wrong"
     }
+    await createSession({
+        user: {
+            id: data.signin.id,
+            name: data.signin.name,
+            avatar: data.signin.avatar,
+        },
+        accessToken: data.signin.accessToken
+    })
     revalidatePath('/');
     redirect('/');
 }
