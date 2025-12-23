@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getSession } from "@/lib/session";
 import SignInPanel from "./signInPanel";
+import Profile from "../profile";
 
 type Props = {}
 
@@ -21,7 +22,11 @@ const Navbar = async (props: Props) => {
                 <Link href="#contact">
                     Contact
                 </Link>
-                {session?.user ? <a href="/api/auth/signout">Sign Out</a> : (<SignInPanel />)}
+                {session?.user ? (
+                    <Profile user={session.user} />
+                ) : (
+                    <SignInPanel />
+                )}
             </div>
         </>
     );
