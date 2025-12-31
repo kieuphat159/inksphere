@@ -1,6 +1,8 @@
 import { Sign } from "crypto";
 import Link from "next/link";
 import SignInForm from "./_components/signInForm";
+import { Button } from "@/components/ui/button";
+import { BACKEND_URL } from "@/lib/constants";
 
 const SignInPage = () => {
     return (
@@ -11,6 +13,9 @@ const SignInPage = () => {
             <Link href="/auth/signup" className="underline">
                 Don't have an account? Sign Up
             </Link>
+            <Button>
+                <a href={`${BACKEND_URL}/auth/google/login`}>Sign In with Google</a>
+            </Button>
         </div>
     )
 }
