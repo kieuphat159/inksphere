@@ -26,7 +26,7 @@ export type Tag = {
     name: string;
 }
 
-export type Comment = {
+export type CommentEntity = {
     id: number;
     content: string;
     createdAt: Date;
