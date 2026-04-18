@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import CommentCard from "./commentCard";
 import CommentPagination from "./commentPagination";
+import CommentCardSkeleton from "@/components/commentCardSkeleton";
 
 type Props = {
     postId: number;
@@ -24,7 +25,11 @@ const Comments = ({ postId }: Props) => {
         <div className="p-2 rounded-md shadow-md">
             <h6 className="text-lg text-slate-700">Comments</h6>
             <div className="flex flex-col gap-2">
-                { data?.comments.map((comment) => <CommentCard comment={comment} key={comment.id} />)}
+                { 
+                    isLoading
+                    ? Array.from({ length: 12 }).map((_, index) => <CommentCardSkeleton  key={index} />)
+                    : data?.comments.map((comment) => <CommentCard comment={comment} key={comment.id} />)
+                }
             </div>
             <CommentPagination
                 totalPages={totalPages} 
