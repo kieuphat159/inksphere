@@ -1,17 +1,29 @@
 "use client";
 
-import DOMPurify from 'dompurify';
+import { useEffect, useState } from "react";
+import DOMPurify from "dompurify";
 
 type Props = {
     content: string;
     className?: string;
 };
 
-const SanitizedContent = (props: Props) => {
-    const cleanHTML = DOMPurify.sanitize(props.content);
+const SanitizedContent = ({ content, className }: Props) => {
+    const [cleanHTML, setCleanHTML] = useState("");
+
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const purify = DOMPurify(window);
+            setCleanHTML(purify.sanitize(content));
+        }
+    }, [content]);
+
     return (
-        <div className={props.className} dangerouslySetInnerHTML={{ __html: cleanHTML }} />
+        <div
+            className={className}
+            dangerouslySetInnerHTML={{ __html: cleanHTML }}
+        />
     );
-}
+};
 
 export default SanitizedContent;

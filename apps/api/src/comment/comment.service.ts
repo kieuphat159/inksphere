@@ -26,4 +26,22 @@ export class CommentService {
         where: { postId }
       });
     }
+
+    async create(createCommentInput: CreateCommentInput, userId: number) {
+      return await this.prisma.comment.create({
+        data: {
+          content: createCommentInput.content,
+          post: {
+            connect: {
+              id: createCommentInput.postId
+            }
+          },
+          author: {
+            connect: {
+              id: userId
+            }
+          }
+        }
+      });
+  }  
 }

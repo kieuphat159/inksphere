@@ -1,7 +1,8 @@
 import { fetchPostById } from "@/lib/actions/postAction";
 import Image from "next/image";
-    import SanitizedContent from "./_components/sanitizedContent";
+import SanitizedContent from "./_components/sanitizedContent";
 import Comments from "./_components/comments";
+import { getSession } from "@/lib/session";
 
 type Props = {
     params: {
@@ -12,6 +13,7 @@ type Props = {
 const PostPage = async ({ params }: Props) => {
     const postId = (await params).id;
     const post = await fetchPostById(+postId);
+    const session = await getSession();
     return (
         <main className="container mx-auto px-4 py-8 mt-16">
             <h1 className="text-4xl font-bold mb-4 text-slate-700">
@@ -31,7 +33,7 @@ const PostPage = async ({ params }: Props) => {
             </div>
             <SanitizedContent content={post.content} className="" />
             {/* Todo: Comments here */}
-            <Comments postId={post.id} />
+            <Comments postId={post.id} user={session?.user} />
         </main>
     )
 }
