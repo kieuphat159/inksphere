@@ -58,11 +58,15 @@ type Query {
   getPostById(id: Int!): Post!
   getPostComments(postId: Int!, take: Int = 12, skip: Int = 0): [CommentEntity!]!
   postCommentsCount(postId: Int!): Int!
+  postLikeCount(postId: Int!): Int!
 }
 
 type Mutation {
   createUser(createUserInput: CreateUserInput!): User!
   createComment(createCommentInput: CreateCommentInput!): CommentEntity!
+  likePost(postId: Int!): Boolean!
+  unlikePost(postId: Int!): Boolean!
+  userLikedPost(postId: Int!): Boolean!
   signin(signInInput: SignInInput!): AuthPayload!
 }
 
