@@ -74,4 +74,28 @@ export const CREATE_COMMENT_MUTATION = gql`
             id
         }
     }
+`   
+
+export const POST_LIKE_COUNT_QUERY = gql`
+    query PostLikeCount($postId: Int!) {
+        postLikeCount(postId: $postId)
+    }
+`
+
+export const USER_LIKED_POST_MUTATION = gql`
+    mutation userLikedPost($postId: Int!) {
+        userLikedPost(postId: $postId)
+    }
+`
+
+export const LIKE_POST_MUTATION = gql`
+    mutation likePost($postId: Int!) {
+        likePost(postId: $postId)
+    }
+`
+
+export const UNLIKE_POST_MUTATION = gql`
+    mutation unlikePost($postId: Int!) {
+        unlikePost(postId: $postId)
+    }
 `
