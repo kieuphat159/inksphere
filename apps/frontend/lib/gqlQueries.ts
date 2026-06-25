@@ -7,8 +7,8 @@ export const GET_POST = gql`
             title
             slug
             thumbnail
-            content  
-            createdAt  
+            content
+            createdAt
         }
         postsCount
     }
@@ -31,15 +31,15 @@ export const GET_POST_BY_ID = gql`
             }
         }
     }
-`
+`;
 
 export const CREATE_USER_MUTATION = gql`
     mutation createUser($input: CreateUserInput!) {
-        createUser(createUserInput: $input) { 
+        createUser(createUserInput: $input) {
             id
         }
     }
-`
+`;
 
 export const SIGN_IN_MUTATION = gql`
     mutation signin($input: SignInInput!) {
@@ -50,7 +50,7 @@ export const SIGN_IN_MUTATION = gql`
             accessToken
         }
     }
-`
+`;
 
 export const GET_POST_COMMENTS = gql`
     query getPostComments($postId: Int!, $take: Int, $skip: Int) {
@@ -66,7 +66,7 @@ export const GET_POST_COMMENTS = gql`
 
         postCommentsCount(postId: $postId)
     }
-`
+`;
 
 export const CREATE_COMMENT_MUTATION = gql`
     mutation createComment($input: CreateCommentInput!) {
@@ -74,28 +74,47 @@ export const CREATE_COMMENT_MUTATION = gql`
             id
         }
     }
-`   
+`;
 
 export const POST_LIKE_COUNT_QUERY = gql`
     query PostLikeCount($postId: Int!) {
         postLikeCount(postId: $postId)
     }
-`
+`;
 
 export const USER_LIKED_POST_MUTATION = gql`
     mutation userLikedPost($postId: Int!) {
         userLikedPost(postId: $postId)
     }
-`
+`;
 
 export const LIKE_POST_MUTATION = gql`
     mutation likePost($postId: Int!) {
         likePost(postId: $postId)
     }
-`
+`;
 
 export const UNLIKE_POST_MUTATION = gql`
     mutation unlikePost($postId: Int!) {
         unlikePost(postId: $postId)
     }
-`
+`;
+
+export const GET_USER_POSTS = gql`
+    query getUserPosts($skip: Int, $take: Int) {
+        getUserPosts(skip: $skip, take: $take) {
+            id
+            content
+            createdAt
+            published
+            slug
+            title
+            thumbnail
+            _count {
+                comments
+                likes
+            }
+        }
+        userPostsCount
+    }
+`;

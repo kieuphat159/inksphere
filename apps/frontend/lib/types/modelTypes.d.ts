@@ -9,6 +9,10 @@ export type Post = {
     updatedAt: Date;
     author: User;
     tags?: Tag[];
+    _count: {
+        comments: number;
+        likes: number;
+    }
 }
 
 export type User = {

@@ -23,11 +23,14 @@ export const fetchGraphQL = async (query: string, variables = {}) => {
 
 export const authFetchGraphQL = async (query: string, variables = {}) => {
     const session = await getSession();
+    if (!session?.accessToken) {
+        throw new Error("Missing authenticated session");
+    }
     const response = await fetch(`${BACKEND_URL}/graphql`, {
         method: 'POST',
         headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${session?.accessToken}`
+            "Authorization": `Bearer ${session.accessToken}`
         },
         body: JSON.stringify({
             query,

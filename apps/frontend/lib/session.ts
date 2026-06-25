@@ -15,6 +15,7 @@ export type Session = {
 
 const secretKey = process.env.SESSION_SECRET_KEY!;
 const encodeKey = new TextEncoder().encode(secretKey);
+const isProduction = process.env.NODE_ENV === "production";
 
 export async function createSession(payload: Session) {
     const session = await new SignJWT(payload)
@@ -26,7 +27,7 @@ export async function createSession(payload: Session) {
 
     (await cookies()).set("session", session, {
         httpOnly: true,
-        secure: true,
+        secure: isProduction,
         expires: expiredAt,
         sameSite: "lax",
         path: "/",

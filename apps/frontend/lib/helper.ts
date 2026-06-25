@@ -9,7 +9,7 @@ export function transformTakeSkip({
     pageSize?: number;
 }) {
     return {
-        skip: (page ?? 1 - 1) * (pageSize ?? DEFAULT_PAGE_SIZE),
+        skip: ((page ?? 1) - 1) * (pageSize ?? DEFAULT_PAGE_SIZE),
         take: pageSize ?? DEFAULT_PAGE_SIZE,
     }
 }
