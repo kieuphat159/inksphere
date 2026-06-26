@@ -1,13 +1,21 @@
 "use server";
 
 import { authFetchGraphQL, fetchGraphQL } from "@/lib/fetchGraphQL";
-import { CREATE_POST_MUTATION, GET_POST, GET_POST_BY_ID, GET_USER_POSTS, UPDATE_POST_MUTATION } from "@/lib/gqlQueries";
+import { 
+    CREATE_POST_MUTATION, 
+    GET_POST, GET_POST_BY_ID, 
+    GET_USER_POSTS, 
+    UPDATE_POST_MUTATION,
+    DELETE_POST_MUTATION
+} from "@/lib/gqlQueries";
 import { print } from "graphql";
 import { Post } from "../types/modelTypes";
 import { transformTakeSkip } from "../helper";
 import { PostFormState } from "../types/formState";
 import { PostFormSchema } from "../zodSchemas/postFormSchema";
 import { uploadThumbnail } from "../upload";
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 
 export const fetchPosts = async ({
     page,
@@ -116,3 +124,25 @@ export async function updatePost(state: PostFormState, formData: FormData): Prom
         ok: false
     }
 } 
+export async function deletePost(postId: number) {
+    const data = await authFetchGraphQL(print(DELETE_POST_MUTATION), { postId });
+    return data.deletePost ? { message: "Post deleted successfully", ok: true } : { message: "Failed to delete post", ok: false };
+}
+
+type DeletePostState = {
+    message?: string;
+    ok?: boolean;
+};
+
+export async function deletePostAction(
+    _state: DeletePostState | undefined,
+    formData: FormData
+): Promise<DeletePostState> {
+    const postId = Number(formData.get("postId"));
+    const data = await authFetchGraphQL(print(DELETE_POST_MUTATION), { postId });
+    if (data.deletePost) {
+        revalidatePath("/user/posts");
+        redirect("/user/posts");
+    }
+    return { message: "Failed to delete post", ok: false };
+}
