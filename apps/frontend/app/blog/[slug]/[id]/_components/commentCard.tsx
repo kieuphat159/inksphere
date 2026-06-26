@@ -8,18 +8,21 @@ type Props = {
 
 const CommentCard = ({ comment }: Props) => {
     return (
-        <div className='p-2 shadow rounded'>
-            <div className='flex gap-2 text-slate-500 items-center'>
-                <Avatar className='border-2'>
+        <div className='py-4 border-b border-border/40 flex flex-col items-start text-left w-full'>
+            <div className='flex gap-3 text-muted-foreground items-center mb-2'>
+                <Avatar className='border border-border w-7 h-7'>
                     <AvatarImage src={comment.author.avatar || undefined} />
                     <AvatarFallback>
-                        <UserIcon className='w-6 h-6' />
+                        <UserIcon className='w-4 h-4' />
                     </AvatarFallback>
                 </Avatar>
-                <p>{comment.author.name} | </p>
-                <p>{new Date(comment.createdAt).toLocaleDateString()}</p>
+                <div className="font-mono text-[10px] uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="font-bold text-foreground">{comment.author.name}</span>
+                    <span className="text-border">|</span>
+                    <span>{new Date(comment.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                </div>
             </div>
-            <p className='mt-4'>{comment.content}</p>
+            <p className='font-serif text-sm text-foreground/90 leading-relaxed pl-10'>{comment.content}</p>
         </div>
     )
 }

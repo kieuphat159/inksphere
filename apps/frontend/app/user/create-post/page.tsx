@@ -2,9 +2,9 @@ import CreatePostContainer from "./_components/createPostContainer";
 
 const CreatePostPage = () => {
     return (
-        <div className="bg-white rounded-md shadow-md p-6 w-full max-w-2xl">
-            <h2 className="text-lg font-bold mb-4 text-slate-700 text-center">
-                Create a Post
+        <div className="bg-card border border-border rounded-sm p-8 w-full max-w-2xl">
+            <h2 className="font-serif text-2xl font-bold mb-6 text-foreground text-center">
+                Create Post
             </h2>
             <CreatePostContainer />
         </div>

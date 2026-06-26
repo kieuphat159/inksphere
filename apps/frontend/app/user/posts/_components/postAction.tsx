@@ -13,13 +13,12 @@ const PostAction = async ({ postId }: Props) => {
             <Tooltip>
                 <TooltipTrigger asChild>
                     <Link href={`/user/posts/${postId}/update`}
-                        className="border p-2 border-yellow-500 rounded-md text-yellow-500 hover:border-yellow-700 
-                        hover:text-yellow-700 transition">
-                        <PencilIcon className="w-4 h-4" />
+                        className="border border-border p-2 rounded-sm text-foreground hover:bg-foreground hover:text-background transition-all duration-150">
+                        <PencilIcon className="w-3.5 h-3.5" />
                     </Link>
                 </TooltipTrigger>
-                <TooltipContent>
-                    <p className="font-medium">Edit This Post</p>
+                <TooltipContent className="font-mono text-[9px] uppercase tracking-widest px-2.5 py-1">
+                    Edit Post
                 </TooltipContent>
             </Tooltip>
         </TooltipProvider>
@@ -27,13 +26,12 @@ const PostAction = async ({ postId }: Props) => {
             <Tooltip>
                 <TooltipTrigger asChild>
                     <Link href={`/user/posts/${postId}/delete`}
-                        className="border p-2 border-red-500 rounded-md text-red-500 hover:border-red-700 
-                        hover:text-red-700 transition">
-                        <TrashIcon className="w-4 h-4" />
+                        className="border border-border p-2 rounded-sm text-red-600 hover:bg-red-600 hover:text-white transition-all duration-150">
+                        <TrashIcon className="w-3.5 h-3.5" />
                     </Link>
                 </TooltipTrigger>
-                <TooltipContent>
-                    <p className="font-medium">Delete This Post</p>
+                <TooltipContent className="font-mono text-[9px] uppercase tracking-widest px-2.5 py-1 bg-red-600 text-white">
+                    Delete Post
                 </TooltipContent>
             </Tooltip>
         </TooltipProvider>

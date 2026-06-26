@@ -16,25 +16,29 @@ const PostPage = async ({ params }: Props) => {
     const post = await fetchPostById(+postId);
     const session = await getSession();
     return (
-        <main className="container mx-auto px-4 py-8 mt-16">
-            <h1 className="text-4xl font-bold mb-4 text-slate-700">
+        <main className="max-w-3xl mx-auto px-6 pt-32 pb-16 w-full flex-grow flex flex-col">
+            <h1 className="font-serif text-3xl md:text-5xl font-black leading-tight tracking-tight text-foreground mb-4">
                 {post.title}
             </h1>
-            <p className="text-slate-500 text-sm mb-4">
-                By {post.author.name} | {new Date(post.createdAt).toLocaleDateString()}
-            </p>
-            <div className="relative w-80 h-60">
+            <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground mb-8 pb-6 border-b border-border">
+                <span>By {post.author.name}</span>
+                <span className="mx-2 text-border">|</span>
+                <span>{new Date(post.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+            </div>
+            <div className="relative w-full aspect-[21/10] my-4 border border-border p-2 bg-muted/15">
                 <Image
-                    src={post.thumbnail ??
-                        "/no-image.png"}
+                    src={post.thumbnail ?? "/no-image.png"}
                     alt={post.title} 
                     fill
-                    className="rounded-md object-cover"
+                    className="object-cover"
                 />
             </div>
-            <SanitizedContent content={post.content} className="" />
-            <Like postId={post.id} user={session?.user} />  
-            <Comments postId={post.id} user={session?.user} />
+            <SanitizedContent content={post.content} className="editorial-content mt-8" />
+            <div className="w-full h-[1px] bg-border my-10" />
+            <div className="flex flex-col gap-8">
+                <Like postId={post.id} user={session?.user} />  
+                <Comments postId={post.id} user={session?.user} />
+            </div>
         </main>
     )
 }

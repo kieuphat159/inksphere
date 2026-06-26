@@ -11,33 +11,32 @@ type Props = {
 const Profile = ({ user }: Props) => {
     return (
         <Popover>
-            <PopoverTrigger>
-                <Avatar>
-                    <AvatarImage src={user.avatar} className="border-2 rounded-full" />
+            <PopoverTrigger className="cursor-pointer outline-none flex items-center">
+                <Avatar className="border border-border">
+                    <AvatarImage src={user.avatar || undefined} />
                     <AvatarFallback>
-                        <UserIcon className="w-8 text-slate-500" />
+                        <UserIcon className="w-5 h-5 text-muted-foreground" />
                     </AvatarFallback>
                 </Avatar>
             </PopoverTrigger>
-            <PopoverContent className="bg-slate-50 text-slate-900 w-48 p-4 rounded-md shadow-md">
-                <div className="flex justify-center items-center gap-3">
-                    <UserIcon className="w-4" />
-                    <p>{user.name}</p>
+            <PopoverContent className="bg-background text-foreground border border-border w-52 p-4 rounded-sm shadow-none z-50 mt-2 flex flex-col gap-3 focus:outline-none">
+                <div className="flex items-center gap-2 pb-2 border-b border-border text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+                    <UserIcon className="w-3.5 h-3.5" />
+                    <span className="truncate max-w-[150px]" title={user.name}>{user.name}</span>
                 </div>
-                <div className="*:grid *:grid-cols-5 *:gap-3 *:items-center *:my-2 *:py-2  [&>*>span]:col-span-4 
-                [&>*:hover]:bg-sky-500 [&>*:hover]:text-white *:transition [&>*]:rounded-md [&>*]:px-1 [&>*>*:nth-child(1)]:justify-self-end">
-                    <a href="/api/auth/signout">
-                        <ArrowRightStartOnRectangleIcon className="w-4" />
+                <div className="flex flex-col gap-1 font-mono text-[10px] uppercase tracking-widest font-bold">
+                    <Link href="/user/create-post" className="flex items-center gap-3 py-2 px-2 hover:bg-foreground hover:text-background transition-colors duration-150">
+                        <PencilSquareIcon className="w-4 h-4" />
+                        <span>Create Post</span>
+                    </Link>
+                    <Link href="/user/posts" className="flex items-center gap-3 py-2 px-2 hover:bg-foreground hover:text-background transition-colors duration-150">
+                        <ListBulletIcon className="w-4 h-4" />
+                        <span>My Posts</span>
+                    </Link>
+                    <a href="/api/auth/signout" className="flex items-center gap-3 py-2 px-2 text-red-600 hover:bg-red-600 hover:text-white transition-colors duration-150 border-t border-border mt-1 pt-3">
+                        <ArrowRightStartOnRectangleIcon className="w-4 h-4" />
                         <span>Sign Out</span>
                     </a>
-                    <Link href="/user/create-post">
-                        <PencilSquareIcon className="w-4" />
-                        <span>Create New Post</span>
-                    </Link>
-                    <Link href="/user/posts">
-                        <ListBulletIcon className="w-4" />
-                        <span>Posts</span>
-                    </Link>
                 </div>
             </PopoverContent>
         </Popover>

@@ -9,19 +9,13 @@ const Navbar = async (props: Props) => {
     const session = await getSession();
     return (
         <>
-            <h1 className="text-2xl font-bold p-2">My Mordern Blog</h1>
-            <div className="flex flex-col md:flex-row gap-2 md:ml-auto [&>a]:py-2 [&>a]:px-4 [&>a]:transition duration-300 [&>a]:rounded-md [&>a:hover]:text-sky-100 [&>a:hover]:bg-sky-500">
-                <Link href="/">
-                    Blog
-                </Link>
-
-                <Link href="#about">
-                    About
-                </Link>
-
-                <Link href="#contact">
-                    Contact
-                </Link>
+            <Link href='/' className='font-serif italic text-2xl font-bold tracking-tight p-2'>
+                Inkwell
+            </Link>
+            <div className="flex flex-col md:flex-row items-center gap-1 md:ml-auto [&>a]:py-2 [&>a]:px-4 [&>a]:transition-all [&>a]:duration-200 [&>a]:font-mono [&>a]:uppercase [&>a]:tracking-widest [&>a]:text-xs [&>a]:font-bold [&>a:hover]:underline [&>a:hover]:underline-offset-4">
+                <Link href="/">Home</Link>
+                <Link href="/about">About</Link>
+                <Link href="/contact">Contact</Link>
                 {session?.user ? (
                     <Profile user={session.user} />
                 ) : (

@@ -23,13 +23,12 @@ const DesktopNavbar = (props: Props) => {
     const isHomePage = pathname === "/";
 
     return (
-        <nav className={cn("hidden fixed transition-colors w-full z-31 text-white top-0 md:block", {
-            "bg-white text-gray-700 shadow-md": isScrolled || !isHomePage,
+        <nav className={cn("hidden fixed transition-all duration-300 w-full z-40 top-0 md:block border-b border-transparent text-white", {
+            "bg-background/90 backdrop-blur-sm text-foreground border-border": isScrolled || !isHomePage,
         })}>
-            <div className="flex items-center px-4 py-4 container">
+            <div className="flex items-center px-6 py-4 max-w-7xl mx-auto w-full">
                 {props.children}
             </div>
-            <hr className="border-b border-gray-100 opacity-25"/>
         </nav>
     );
 }
