@@ -6,9 +6,7 @@ import { DEFAULT_PAGE_SIZE } from 'src/constant';
 
 @Injectable()
 export class PostService {
-  constructor(private prisma: PrismaService) {
-
-  }
+  constructor(private prisma: PrismaService) {}
 
   async findAll({
     skip = 0,
@@ -68,6 +66,50 @@ export class PostService {
       where: {
         author: {
           id: userId
+        }
+      }
+    });
+  }
+
+  async create({ createPostInput, authorId }: { createPostInput: CreatePostInput; authorId: number }) {
+    const { tags, ...rest } = createPostInput;
+    return await this.prisma.post.create({
+      data: {
+        ...rest,
+        author: {
+          connect: {
+            id: authorId
+          }
+        },
+        tags: {
+          connectOrCreate: tags.map(tag => ({
+            where: { name: tag },
+            create: { name: tag }
+          }))
+        }
+      }
+    });
+  }
+  
+  async update({ userId, updatePostInput }: { userId: number; updatePostInput: UpdatePostInput }) {
+    const authorIdMatch = await this.prisma.post.findUnique({
+      where: { id: updatePostInput.postId, authorId: userId },
+    });
+
+    if (!authorIdMatch) {
+      throw new Error("You are not authorized to update this post.");
+    }
+    const { postId, ...data } = updatePostInput;
+    return await this.prisma.post.update({
+      where: { id: postId },
+      data: {
+        ...data,
+        tags: {
+          set: [],
+          connectOrCreate: updatePostInput.tags!.map(tag => ({
+            where: { name: tag },
+            create: { name: tag }
+          }))
         }
       }
     });

@@ -12,7 +12,7 @@ const PostAction = async ({ postId }: Props) => {
         <TooltipProvider>
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <Link href={`/user/posts/${postId}/edit`}
+                    <Link href={`/user/posts/${postId}/update`}
                         className="border p-2 border-yellow-500 rounded-md text-yellow-500 hover:border-yellow-700 
                         hover:text-yellow-700 transition">
                         <PencilIcon className="w-4 h-4" />

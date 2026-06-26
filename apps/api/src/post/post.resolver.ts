@@ -19,6 +19,8 @@ export class PostResolver {
     @Args('skip', { nullable: true }) skip?: number,
     @Args('take', { nullable: true }) take?: number,
   ) {
+    const user = context.req.user;
+    console.log({ user });
     return await this.postService.findAll({ skip, take });
   }
 
@@ -49,4 +51,25 @@ export class PostResolver {
     const userId = context.req.user.id;
     return this.postService.userPostsCount(userId);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Mutation(() => Post)
+  createPost(
+    @Context() context,
+    @Args('createPostInput') createPostInput: CreatePostInput
+  ) {
+    const authorId = context.req.user.id;
+    return this.postService.create({ createPostInput, authorId });
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Mutation(() => Post)
+  updatePost(
+    @Context() context,
+    @Args("updatePostInput") updatePostInput: UpdatePostInput
+  ) {
+    const userId = context.req.user.id;
+    return this.postService.update({ userId, updatePostInput });
+  }
+
 }
