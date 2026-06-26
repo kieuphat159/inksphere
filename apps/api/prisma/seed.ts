@@ -1,59 +1,145 @@
-import { PrismaClient } from '@prisma/client';
-import { faker } from '@faker-js/faker';
+import { PrismaClient } from "@prisma/client";
+import { faker } from "@faker-js/faker";
+
+const users: Awaited<ReturnType<typeof prisma.user.create>>[] = [];
+const tags: Awaited<ReturnType<typeof prisma.tag.create>>[] = [];
 
 const prisma = new PrismaClient();
 
-function generteSlug(title: string) {
-    return title.toLowerCase().trim().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+const TOTAL_USERS = 10;
+const TOTAL_TAGS = 10;
+const TOTAL_POSTS = 400;
+const COMMENTS_PER_POST = 20;
+
+function generateSlug(title: string) {
+  return (
+    title
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, "-")
+      .replace(/[^\w-]+/g, "") +
+    "-" +
+    faker.string.alphanumeric(6).toLowerCase()
+  );
 }
 
 async function main() {
-    const users = Array.from({ length: 10}).map(() => ({
+  console.log("Seeding...");
+
+  // USERS
+  const users: Awaited<ReturnType<typeof prisma.user.create>>[] = [];
+
+  for (let i = 0; i < TOTAL_USERS; i++) {
+    const user = await prisma.user.create({
+      data: {
         name: faker.person.fullName(),
-        email: faker.internet.email(),
+        email: faker.internet.email().toLowerCase(),
         bio: faker.lorem.sentence(),
         avatar: faker.image.avatar(),
-        password: faker.internet.password()
-    }))
-
-    await prisma.user.createMany({
-        data: users,
+        password: faker.internet.password(),
+      },
     });
 
-    const posts = Array.from({ length: 400}).map(() => ({
-        title: faker.lorem.sentence(),
-        slug:generteSlug(faker.lorem.sentence()),
-        content: faker.lorem.paragraphs(3),
-        thumbnail: faker.image.urlLoremFlickr(),
-        authorId: faker.number.int({ min: 1, max: 10 }),
-        published: true
-    }))
-    await Promise.all(
-        posts.map(async(post) => {
-            await prisma.post.create({
-                data: {
-                    ...post,
-                    comments: {
-                        createMany: {
-                            data: Array.from({ length: 20 }).map(() => ({
-                                content: faker.lorem.sentences(),
-                                authorId: faker.number.int({ min: 1, max: 10 }),
-                            }))
-                        }
-                    }
-                }
-            });
-        })
+    users.push(user);
+  }
+
+  console.log(`✓ Users: ${users.length}`);
+
+  // TAGS
+  const tagNames = [
+    "JavaScript",
+    "TypeScript",
+    "React",
+    "NextJS",
+    "NodeJS",
+    "Prisma",
+    "PostgreSQL",
+    "CSS",
+    "Docker",
+    "AI",
+  ];
+
+  const tags: Awaited<ReturnType<typeof prisma.tag.create>>[] = [];
+
+  for (const name of tagNames) {
+    const tag = await prisma.tag.create({
+      data: { name },
+    });
+
+    tags.push(tag);
+  }
+
+  console.log(`✓ Tags: ${tags.length}`);
+
+  // POSTS
+  for (let i = 0; i < TOTAL_POSTS; i++) {
+    const title = faker.lorem.sentence();
+
+    const author = faker.helpers.arrayElement(users);
+
+    const selectedTags = faker.helpers.arrayElements(
+      tags,
+      faker.number.int({ min: 1, max: 4 })
     );
 
-    console.log('Seeding completed.');
+    const post = await prisma.post.create({
+      data: {
+        title,
+        slug: generateSlug(title),
+        content: faker.lorem.paragraphs(4),
+        thumbnail: faker.image.urlPicsumPhotos(),
+        published: true,
+        authorId: author.id,
+
+        tags: {
+          connect: selectedTags.map((t) => ({
+            id: t.id,
+          })),
+        },
+      },
+    });
+
+    // COMMENTS
+    await prisma.comment.createMany({
+      data: Array.from({ length: COMMENTS_PER_POST }).map(() => ({
+        content: faker.lorem.sentences({
+          min: 1,
+          max: 3,
+        }),
+        authorId: faker.helpers.arrayElement(users).id,
+        postId: post.id,
+      })),
+    });
+
+    // LIKES
+    const likedUsers = faker.helpers.arrayElements(
+      users,
+      faker.number.int({
+        min: 0,
+        max: users.length,
+      })
+    );
+
+    if (likedUsers.length) {
+      await prisma.like.createMany({
+        data: likedUsers.map((u) => ({
+          userId: u.id,
+          postId: post.id,
+        })),
+        skipDuplicates: true,
+      });
+    }
+
+    if ((i + 1) % 20 === 0) {
+      console.log(`✓ Posts: ${i + 1}/${TOTAL_POSTS}`);
+    }
+  }
+
+  console.log("✅ Seed completed");
 }
 
-main().then(() => {
-    prisma.$disconnect();
-    process.exit(0);
-}).catch((e) => {
-    console.error(e);
-    prisma.$disconnect();
-    process.exit(1);
-});
+main()
+  .catch(console.error)
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

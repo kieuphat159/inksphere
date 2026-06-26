@@ -22,10 +22,10 @@ export async function signUp(state: SignUpFormState, formData: FormData): Promis
             ...validatedFields.data,
         }
     });
-    if (data.errors) return {
+    if (data?.errors) return {
         data: Object.fromEntries(formData.entries()),
         errors: {},
-        message: "Something went wrong"
+        message: data.errors[0]?.message || "Something went wrong"
     };
     redirect('/auth/signin');
 }
@@ -39,25 +39,39 @@ export async function signIn(state: SignUpFormState, formData: FormData): Promis
         }
     }
 
-    const data = await fetchGraphQL(print(SIGN_IN_MUTATION), {
-        input: {
-            ...validatedFields.data,
-        }
-    });
+    try {
+        const data = await fetchGraphQL(print(SIGN_IN_MUTATION), {
+            input: {
+                ...validatedFields.data,
+            }
+        });
 
-    if (!data?.signin) return {
-        data: Object.fromEntries(formData.entries()),
-        errors: {},
-        message: "Something went wrong"
+        if (data?.errors || !data?.signin) {
+            const errorMsg = data?.errors?.[0]?.message || "Invalid email or password";
+            return {
+                data: Object.fromEntries(formData.entries()),
+                errors: {},
+                message: errorMsg,
+            };
+        }
+
+        await createSession({
+            user: {
+                id: data.signin.id,
+                name: data.signin.name,
+                avatar: data.signin.avatar,
+            },
+            accessToken: data.signin.accessToken
+        });
+        revalidatePath('/');
+        redirect('/');
+    } catch (err: any) {
+        // redirect() throws internally — let it propagate
+        if (err?.digest?.startsWith('NEXT_REDIRECT')) throw err;
+        return {
+            data: Object.fromEntries(formData.entries()),
+            errors: {},
+            message: "An unexpected error occurred. Please try again.",
+        };
     }
-    await createSession({
-        user: {
-            id: data.signin.id,
-            name: data.signin.name,
-            avatar: data.signin.avatar,
-        },
-        accessToken: data.signin.accessToken
-    })
-    revalidatePath('/');
-    redirect('/');
-}
+}
