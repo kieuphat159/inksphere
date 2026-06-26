@@ -40,29 +40,34 @@ const AddComment = (props: Props) => {
     return (
         <Dialog open={state?.open}> 
             <DialogTrigger asChild>
-                <Button className="my-2">
+                <Button variant="outline" className="w-fit my-2 font-mono text-[11px] uppercase tracking-widest py-5 border-border hover:border-foreground hover:bg-foreground hover:text-background transition-all duration-200">
                     Leave your comment
                 </Button>
             </DialogTrigger>
-            <DialogContent>
-                <DialogTitle className="text-lg font-medium mb-4">
+            <DialogContent className="max-w-md">
+                <DialogTitle className="font-serif text-xl font-bold tracking-tight mb-2 text-foreground">
                     Add a comment
                 </DialogTitle>
-                <form action={action} className={cn(props.className)}>
+                <form action={action} className={cn(props.className, "flex flex-col gap-4")}>
                     <input type="hidden" name="postId" value={props.postId} />
-                    <p className="text-sm text-slate-500 mb-4">
-                        Commenting as <span className="font-medium">{props.user.name}</span>
+                    <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground pb-2 border-b border-border/40">
+                        Commenting as <span className="font-bold text-foreground">{props.user.name}</span>
                     </p>
-                    <Textarea name="content"
-                        placeholder="Your comment here..." 
-                    />
-                    { !!state?.errors?.content && (
-                        <p className="text-sm text-red-500 mt-1 animate-pulse">
-                            {state.errors.content}
-                        </p> 
-                    )}
-                    <Button type="submit" className="mt-2">
-                        Submit
+                    <div className="flex flex-col gap-1.5">
+                        <Textarea 
+                            name="content"
+                            placeholder="Share your thoughts..." 
+                            className="border-border focus-visible:ring-foreground/10"
+                            rows={4}
+                        />
+                        { !!state?.errors?.content && (
+                            <p className="text-red-600 font-mono text-[10px] uppercase tracking-wider mt-1">
+                                {state.errors.content}
+                            </p> 
+                        )}
+                    </div>
+                    <Button type="submit" className="font-mono text-[11px] uppercase tracking-widest py-4 bg-foreground text-background hover:bg-foreground/90 transition-colors duration-200">
+                        Submit Comment
                     </Button>
                 </form>
             </DialogContent>

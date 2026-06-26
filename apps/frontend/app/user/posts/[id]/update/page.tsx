@@ -11,8 +11,8 @@ const UpdatePostPage = async (props: Props) => {
     const params = await props.params;
     const post = await fetchPostById(+params.id);
     return (
-        <div className="bg-white rounded-md shadow-md p-6 w-full max-w-2xl">
-            <h2 className="text-lg font-bold mb-4 text-slate-700 text-center">
+        <div className="bg-card border border-border rounded-sm p-8 w-full max-w-2xl">
+            <h2 className="font-serif text-2xl font-bold mb-6 text-foreground text-center">
                 Update Post
             </h2>
             <UpdatePostContainer post={post} />

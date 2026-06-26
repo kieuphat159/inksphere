@@ -10,16 +10,20 @@ type Props = {
 
 export default function Post(props: Props) {
     return (
-        <section className="container m-8 max-w-5xl mx-auto">
-            <h2 className="text-5xl font-bold text-center text-gray-600 leading-tight mt-5">
-                Latest Posts
-            </h2>
-            <div className="h-1 mx-auto bg-gradient-to-r from-sky-500 to-indigo-500 w-96 mb-9 rounded-t-md">
-
+        <section className="max-w-7xl mx-auto px-6 py-16 md:py-24">
+            <div className="flex flex-col mb-12">
+                <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground mb-2">
+                    Freshly Written
+                </span>
+                <h2 className="text-3xl md:text-5xl font-serif font-black tracking-tight text-foreground">
+                    Latest Posts
+                </h2>
+                <div className="w-full h-[1px] bg-border mt-6" />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-12">
                 {props.posts.map(post => <PostCard key={post.id} {...post} />)}
             </div>
+            <div className="w-full h-[1px] bg-border my-12" />
             <Pagination className='mt-4' currentPage={props.currentPage} totalPages={props.totalPages} />
         </section>
     )

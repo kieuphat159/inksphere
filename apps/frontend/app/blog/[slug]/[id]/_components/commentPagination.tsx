@@ -25,34 +25,42 @@ const CommentPagination = ({
         }
     }
     return (
-        <div className={cn(className, "flex gap-2 justify-center items-center")}>
+        <div className={cn("flex items-center justify-center gap-2 font-mono text-xs", className)}>
             {currentPage !== 1 && (
                 <button
                     onClick={() => handleClick(currentPage - 1)}
-                    className={cn("rounded-md bg-slate-200 py-2 px-2")}
+                    className="p-2 border border-border hover:border-foreground hover:bg-foreground hover:text-background transition-all duration-200 flex items-center justify-center rounded-sm cursor-pointer"
                 >
-                    <ChevronLeftIcon className="w-4" />
+                    <ChevronLeftIcon className="w-4 h-4" />
                 </button>
             )}
 
             {pageNumbers.map((page, index) => (
-                <button
-                    onClick={() => handleClick(page)}
-                    key={index}
-                    disabled={page === '...'}
-                    className={cn("px-3 py-1 rounded-md transition hover:text-sky-600", {
-                        "bg-slate-200": currentPage !== page && page !== '...',
-                        "bg-blue-500 text-white": currentPage === page,
-                        "cursor-not-allowed": page === '...'
-                    })}
-                >
-                    {page === '...' ? '...' : <span>{page}</span>}
-                </button>
+                page === '...' ? (
+                    <span key={index} className="px-3 py-2 text-muted-foreground">...</span>
+                ) : (
+                    <button
+                        key={index}
+                        onClick={() => handleClick(page)}
+                        className={cn(
+                            "px-3 py-2 border border-border hover:border-foreground transition-all duration-200 rounded-sm text-center min-w-[34px] cursor-pointer",
+                            {
+                                "bg-foreground text-background border-foreground font-bold": currentPage === page,
+                                "hover:bg-foreground hover:text-background": currentPage !== page
+                            }
+                        )}
+                    >
+                        {page}
+                    </button>
+                )
             ))}
 
             {currentPage !== totalPages && (
-                <button onClick={() => handleClick(currentPage + 1)} className={"rounded-md bg-slate-200 py-2 px-2"}>
-                    <ChevronRightIcon className="w-4" />
+                <button 
+                    onClick={() => handleClick(currentPage + 1)} 
+                    className="p-2 border border-border hover:border-foreground hover:bg-foreground hover:text-background transition-all duration-200 flex items-center justify-center rounded-sm cursor-pointer"
+                >
+                    <ChevronRightIcon className="w-4 h-4" />
                 </button>
             )}
         </div>
