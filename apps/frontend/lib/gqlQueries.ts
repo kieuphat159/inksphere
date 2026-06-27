@@ -23,6 +23,7 @@ export const GET_POST_BY_ID = gql`
             content
             createdAt
             author {
+                id
                 name
             }
             tags {
@@ -137,5 +138,104 @@ export const UPDATE_POST_MUTATION = gql`
 export const DELETE_POST_MUTATION = gql`
     mutation deletePost($postId: Int!) {
         deletePost(postId: $postId)
+    }
+`;
+
+export const GET_FRIENDS = gql`
+    query friends {
+        friends {
+            id
+            name
+            email
+            avatar
+            bio
+        }
+    }
+`;
+
+export const GET_INCOMING_FRIEND_REQUESTS = gql`
+    query incomingFriendRequests {
+        incomingFriendRequests {
+            id
+            createdAt
+            requester {
+                id
+                name
+                email
+                avatar
+            }
+        }
+    }
+`;
+
+export const GET_OUTGOING_FRIEND_REQUESTS = gql`
+    query outgoingFriendRequests {
+        outgoingFriendRequests {
+            id
+            createdAt
+            receiver {
+                id
+                name
+                email
+                avatar
+            }
+        }
+    }
+`;
+
+export const SEARCH_USERS = gql`
+    query searchUsers($query: String!, $take: Int) {
+        searchUsers(query: $query, take: $take) {
+            id
+            name
+            email
+            avatar
+            bio
+        }
+    }
+`;
+
+export const FRIENDSHIP_STATUS_QUERY = gql`
+    query friendshipStatus($userId: Int!) {
+        friendshipStatus(userId: $userId) {
+            status
+            friendshipId
+        }
+    }
+`;
+
+export const SEND_FRIEND_REQUEST_MUTATION = gql`
+    mutation sendFriendRequest($receiverId: Int!) {
+        sendFriendRequest(receiverId: $receiverId) {
+            id
+            status
+        }
+    }
+`;
+
+export const ACCEPT_FRIEND_REQUEST_MUTATION = gql`
+    mutation acceptFriendRequest($friendshipId: Int!) {
+        acceptFriendRequest(friendshipId: $friendshipId) {
+            id
+            status
+        }
+    }
+`;
+
+export const REJECT_FRIEND_REQUEST_MUTATION = gql`
+    mutation rejectFriendRequest($friendshipId: Int!) {
+        rejectFriendRequest(friendshipId: $friendshipId)
+    }
+`;
+
+export const CANCEL_FRIEND_REQUEST_MUTATION = gql`
+    mutation cancelFriendRequest($friendshipId: Int!) {
+        cancelFriendRequest(friendshipId: $friendshipId)
+    }
+`;
+
+export const REMOVE_FRIEND_MUTATION = gql`
+    mutation removeFriend($friendId: Int!) {
+        removeFriend(friendId: $friendId)
     }
 `;

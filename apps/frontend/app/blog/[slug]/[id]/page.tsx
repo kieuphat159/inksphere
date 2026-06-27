@@ -4,6 +4,7 @@ import SanitizedContent from "./_components/sanitizedContent";
 import Comments from "./_components/comments";
 import { getSession } from "@/lib/session";
 import Like from "./_components/like";
+import AuthorFriendAction from "./_components/authorFriendAction";
 
 type Props = {
     params: {
@@ -20,9 +21,13 @@ const PostPage = async ({ params }: Props) => {
             <h1 className="font-serif text-3xl md:text-5xl font-black leading-tight tracking-tight text-foreground mb-4">
                 {post.title}
             </h1>
-            <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground mb-8 pb-6 border-b border-border">
-                <span>By {post.author.name}</span>
-                <span className="mx-2 text-border">|</span>
+            <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground mb-8 pb-6 border-b border-border flex flex-wrap items-center gap-x-2 gap-y-3">
+                <AuthorFriendAction
+                    authorId={post.author.id}
+                    authorName={post.author.name}
+                    currentUser={session?.user}
+                />
+                <span className="text-border">|</span>
                 <span>{new Date(post.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
             </div>
             <div className="relative w-full aspect-[21/10] my-4 border border-border p-2 bg-muted/15">

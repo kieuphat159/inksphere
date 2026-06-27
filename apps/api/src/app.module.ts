@@ -10,6 +10,7 @@ import { UserModule } from './user/user.module';
 import { CommentModule } from './comment/comment.module';
 import { TagModule } from './tag/tag.module';
 import { LikeModule } from './like/like.module';
+import { FriendModule } from './friend/friend.module';
 import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 
@@ -27,6 +28,7 @@ import { ConfigModule } from '@nestjs/config';
     CommentModule,
     TagModule,
     LikeModule,
+    FriendModule,
     AuthModule],
   controllers: [AppController],
   providers: [AppService],

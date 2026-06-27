@@ -51,6 +51,32 @@ type Post {
   _count: Count!
 }
 
+type Friendship {
+  id: Int!
+  requester: User!
+  receiver: User!
+  status: FriendshipStatus!
+  createdAt: DateTime!
+}
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+type FriendshipRelation {
+  status: FriendshipRelationStatus!
+  friendshipId: Int
+}
+
+enum FriendshipRelationStatus {
+  NONE
+  PENDING_SENT
+  PENDING_RECEIVED
+  FRIENDS
+}
+
 type AuthPayload {
   id: Float!
   name: String!
@@ -67,6 +93,11 @@ type Query {
   getPostComments(postId: Int!, take: Int = 12, skip: Int = 0): [CommentEntity!]!
   postCommentsCount(postId: Int!): Int!
   postLikeCount(postId: Int!): Int!
+  incomingFriendRequests: [Friendship!]!
+  outgoingFriendRequests: [Friendship!]!
+  friends: [User!]!
+  friendshipStatus(userId: Int!): FriendshipRelation!
+  searchUsers(query: String!, take: Int): [User!]!
 }
 
 type Mutation {
@@ -78,6 +109,11 @@ type Mutation {
   likePost(postId: Int!): Boolean!
   unlikePost(postId: Int!): Boolean!
   userLikedPost(postId: Int!): Boolean!
+  sendFriendRequest(receiverId: Int!): Friendship!
+  acceptFriendRequest(friendshipId: Int!): Friendship!
+  rejectFriendRequest(friendshipId: Int!): Boolean!
+  cancelFriendRequest(friendshipId: Int!): Boolean!
+  removeFriend(friendId: Int!): Boolean!
   signin(signInInput: SignInInput!): AuthPayload!
 }
 

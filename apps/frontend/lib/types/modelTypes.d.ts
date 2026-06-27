@@ -38,3 +38,24 @@ export type CommentEntity = {
     author: User;
     post: Post;
 }
+
+export type FriendshipStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED';
+
+export type FriendshipRelationStatus =
+    | 'NONE'
+    | 'PENDING_SENT'
+    | 'PENDING_RECEIVED'
+    | 'FRIENDS';
+
+export type FriendshipRelation = {
+    status: FriendshipRelationStatus;
+    friendshipId?: number | null;
+}
+
+export type Friendship = {
+    id: number;
+    status: FriendshipStatus;
+    createdAt: Date;
+    requester: User;
+    receiver: User;
+}

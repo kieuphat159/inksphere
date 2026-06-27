@@ -1,7 +1,7 @@
 import { SessionUser } from "@/lib/session"
 import { Popover, PopoverContent, PopoverTrigger } from "@radix-ui/react-popover";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { ArrowRightStartOnRectangleIcon, ListBulletIcon, PencilSquareIcon, UserIcon } from "@heroicons/react/24/outline";
+import { ArrowRightStartOnRectangleIcon, ListBulletIcon, PencilSquareIcon, UserGroupIcon, UserIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 
 type Props = {
@@ -32,6 +32,10 @@ const Profile = ({ user }: Props) => {
                     <Link href="/user/posts" className="flex items-center gap-3 py-2 px-2 hover:bg-foreground hover:text-background transition-colors duration-150">
                         <ListBulletIcon className="w-4 h-4" />
                         <span>My Posts</span>
+                    </Link>
+                    <Link href="/user/friends" className="flex items-center gap-3 py-2 px-2 hover:bg-foreground hover:text-background transition-colors duration-150">
+                        <UserGroupIcon className="w-4 h-4" />
+                        <span>Friends</span>
                     </Link>
                     <a href="/api/auth/signout" className="flex items-center gap-3 py-2 px-2 text-red-600 hover:bg-red-600 hover:text-white transition-colors duration-150 border-t border-border mt-1 pt-3">
                         <ArrowRightStartOnRectangleIcon className="w-4 h-4" />
