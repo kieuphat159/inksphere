@@ -1,8 +1,8 @@
 import Link from 'next/link';
 
 export const metadata = {
-  title: 'About – Inkwell',
-  description: 'Inkwell is where writers, thinkers, and creators share ideas — and connect as a community.',
+  title: 'About – InkSphere',
+  description: 'InkSphere is where writers, thinkers, and creators share ideas — and connect as a community.',
 };
 
 const features = [
@@ -35,7 +35,7 @@ export default function AboutPage() {
           </h1>
           <div className="h-[1px] w-20 bg-slate-500 my-6" />
           <p className="text-slate-300 text-lg md:text-xl font-serif max-w-2xl leading-relaxed">
-            Inkwell is a blog-first social platform where writers share essays, stories, and ideas — and stay connected through friendships, real-time chat, and video conversations.
+            InkSphere is a blog-first social platform where writers share essays, stories, and ideas — and stay connected through friendships, real-time chat, and video conversations.
           </p>
         </div>
       </section>
@@ -71,13 +71,13 @@ export default function AboutPage() {
           </blockquote>
           <div className="editorial-content text-foreground">
             <p>
-              Inkwell started as a personal blog project, a space to practice writing and share thoughts publicly. But it quickly became clear that the best part of publishing wasn't the post — it was the conversation that followed.
+              InkSphere started as a personal blog project, a space to practice writing and share thoughts publicly. But it quickly became clear that the best part of publishing wasn't the post — it was the conversation that followed.
             </p>
             <p>
               So we built something different: a platform where long-form content lives alongside real social features. Follow writers, exchange messages, jump on a video call. All without leaving the reading experience you love.
             </p>
             <p>
-              Inkwell is built with Next.js, React Query, and a design philosophy that prizes readability, performance, and authenticity over noise.
+              InkSphere is built with Next.js, React Query, and a design philosophy that prizes readability, performance, and authenticity over noise.
             </p>
           </div>
         </div>
@@ -88,7 +88,7 @@ export default function AboutPage() {
         <div className="max-w-3xl mx-auto px-6 text-center">
           <h2 className="text-4xl md:text-5xl font-serif font-bold mb-6">Ready to start writing?</h2>
           <p className="text-slate-300 font-serif text-lg mb-8">
-            Join Inkwell and publish your first story today.
+            Join InkSphere and publish your first story today.
           </p>
           <Link
             href="/auth/signup"

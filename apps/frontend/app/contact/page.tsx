@@ -1,8 +1,8 @@
 import Link from 'next/link';
 
 export const metadata = {
-  title: 'Contact – Inkwell',
-  description: 'Get in touch with the creator of Inkwell.',
+  title: 'Contact – InkSphere',
+  description: 'Get in touch with the creator of InkSphere.',
 };
 
 const socials = [
@@ -111,7 +111,7 @@ export default function ContactPage() {
           </span>
           <div className="editorial-content text-foreground">
             <p>
-              I'm a software developer with a passion for building products that feel good to use. Inkwell is my attempt to prove that a blog platform can have real personality — both in its writing experience and its social layer.
+              I'm a software developer with a passion for building products that feel good to use. InkSphere is my attempt to prove that a blog platform can have real personality — both in its writing experience and its social layer.
             </p>
             <p>
               Whether you're a writer, a reader, or someone building something similar, I'd genuinely enjoy a conversation. Drop me a message on any of the channels above.

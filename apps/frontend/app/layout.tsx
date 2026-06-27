@@ -23,7 +23,7 @@ const lora = Lora({
 });
 
 export const metadata: Metadata = {
-  title: "Inkwell | KieuPhat159",
+  title: "InkSphere | KieuPhat159",
   description: "A blog-first social platform for writers, thinkers, and creators.",
 };
 
@@ -48,7 +48,7 @@ export default function RootLayout({
             <div className="max-w-7xl mx-auto px-6 py-12 grid grid-cols-1 md:grid-cols-3 gap-10">
               {/* Column 1: Brand */}
               <div className="flex flex-col gap-3">
-                <Link href="/" className="font-serif italic text-xl font-bold text-foreground tracking-tight">Inkwell</Link>
+                <Link href="/" className="font-serif italic text-xl font-bold text-foreground tracking-tight">InkSphere</Link>
                 <p className="font-serif text-sm leading-relaxed text-muted-foreground max-w-xs">
                   A blog-first social platform for writers, thinkers, and creators. Write. Connect. Grow.
                 </p>
@@ -89,7 +89,7 @@ export default function RootLayout({
             {/* Bottom bar */}
             <div className="border-t border-border px-6 py-4">
               <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-2 text-xs font-mono">
-                <span className="uppercase tracking-widest">© {new Date().getFullYear()} Inkwell. All rights reserved.</span>
+                <span className="uppercase tracking-widest">© {new Date().getFullYear()} InkSphere. All rights reserved.</span>
                 <span className="text-muted-foreground/60 uppercase tracking-widest">Built with Next.js · Crafted with care</span>
               </div>
             </div>

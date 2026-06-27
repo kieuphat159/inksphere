@@ -1,8 +1,9 @@
 "use client";
 
-import { PropsWithChildren, ReactNode, useRef, useState } from "react";
+import { PropsWithChildren, ReactNode, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useOnClickOutside } from "usehooks-ts";
+import { usePathname } from "next/navigation";
 
 type Props = PropsWithChildren<{
     triggerIcon: ReactNode;
@@ -11,6 +12,12 @@ type Props = PropsWithChildren<{
 export default function Sidebar(props: Props) {
     const [show, setShow] = useState(false);
     const ref = useRef<HTMLDivElement | null>(null);
+    const pathname = usePathname();
+
+    useEffect(() => {
+        setShow(false);
+    }, [pathname]);
+
     useOnClickOutside(ref as React.RefObject<HTMLElement>, () => setShow(false));
     return (
         <>
