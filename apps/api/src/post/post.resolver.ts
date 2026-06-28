@@ -5,7 +5,6 @@ import { CreatePostInput } from './dto/create-post.input';
 import { UpdatePostInput } from './dto/update-post.input';
 import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth/jwt-auth.guard';
-import { Q } from '@faker-js/faker/dist/airline-DF6RqYmq';
 import { DEFAULT_PAGE_SIZE } from 'src/constant';
 
 @Resolver(() => Post)
@@ -19,8 +18,6 @@ export class PostResolver {
     @Args('skip', { nullable: true }) skip?: number,
     @Args('take', { nullable: true }) take?: number,
   ) {
-    const user = context.req.user;
-    console.log({ user });
     return await this.postService.findAll({ skip, take });
   }
 

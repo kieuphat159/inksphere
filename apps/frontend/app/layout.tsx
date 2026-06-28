@@ -6,6 +6,8 @@ import Navbar from "@/components/ui/navbar";
 import NavbarContainer from "@/components/ui/navbarContainer";
 import Providers from "./providers";
 import { Toaster } from "sonner";
+import { getSession } from "@/lib/session";
+import ChatDock from "@/components/chat/chat-dock";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,11 +29,12 @@ export const metadata: Metadata = {
   description: "A blog-first social platform for writers, thinkers, and creators.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await getSession();
   return (
     <html lang="en" className="scroll-smooth">
       <body
@@ -94,6 +97,7 @@ export default function RootLayout({
               </div>
             </div>
           </footer>
+          <ChatDock session={session} />
           <Toaster />
         </Providers>
       </body>
