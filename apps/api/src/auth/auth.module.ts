@@ -22,5 +22,6 @@ import { AuthController } from './auth.controller';
   })],
   providers: [AuthResolver, AuthService, PrismaService, JwtStrategy, GoogleStrategy],
   controllers: [AuthController],
+  exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

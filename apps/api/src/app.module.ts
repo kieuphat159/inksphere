@@ -13,6 +13,7 @@ import { LikeModule } from './like/like.module';
 import { FriendModule } from './friend/friend.module';
 import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -29,7 +30,8 @@ import { ConfigModule } from '@nestjs/config';
     TagModule,
     LikeModule,
     FriendModule,
-    AuthModule],
+    AuthModule,
+    ChatModule],
   controllers: [AppController],
   providers: [AppService],
 })
