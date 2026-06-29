@@ -12,6 +12,7 @@ import {
   PlusIcon,
   ChatBubbleLeftRightIcon,
   XMarkIcon,
+  ArrowLeftIcon,
 } from "@heroicons/react/24/outline";
 
 import { BACKEND_URL } from "@/lib/constants";
@@ -24,7 +25,6 @@ import type { Session } from "@/lib/session";
 import {
   ChatConversation,
   ChatMessage,
-  ChatFriend,
   ChatUser,
   createDirectConversation,
   fetchConversations,
@@ -109,6 +109,18 @@ export default function ChatDock({ session }: Props) {
   const [activeTab, setActiveTab] = useState<SidebarTab>("chats");
   const [friendFilter, setFriendFilter] = useState("");
   const [socketState, setSocketState] = useState<SocketState>("idle");
+
+  const [isMobile, setIsMobile] = useState(false);
+  const [showMobileChat, setShowMobileChat] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const conversationsQuery = useQuery({
     queryKey: ["chat", "conversations", session?.accessToken],
@@ -271,28 +283,25 @@ export default function ChatDock({ session }: Props) {
     el.scrollTop = el.scrollHeight;
   }, [messagesQuery.data, selectedConversationId, isOpen]);
 
-  const unreadCount = useMemo(() => {
-    if (!conversationsQuery.data || !session?.user?.id) return 0;
+  const unreadCount =
+    conversationsQuery.data && session?.user?.id
+      ? conversationsQuery.data.reduce((count, conversation) => {
+          if (conversation.id === selectedConversationId && isOpen) return count;
 
-    return conversationsQuery.data.reduce((count, conversation) => {
-      if (conversation.id === selectedConversationId && isOpen) return count;
+          const lastMessage = conversation.lastMessage;
+          if (!lastMessage) return count;
 
-      const lastMessage = conversation.lastMessage;
-      if (!lastMessage) return count;
-
-      const me = conversation.members.find((member) => String(member.userId) === String(session.user.id));
-      const lastReadAt = me?.lastReadAt ? new Date(me.lastReadAt).getTime() : 0;
-      const messageTime = new Date(lastMessage.createdAt).getTime();
-      return messageTime > lastReadAt ? count + 1 : count;
-    }, 0);
-  }, [conversationsQuery.data, isOpen, selectedConversationId, session?.user?.id]);
+          const me = conversation.members.find((member) => String(member.userId) === String(session.user.id));
+          const lastReadAt = me?.lastReadAt ? new Date(me.lastReadAt).getTime() : 0;
+          const messageTime = new Date(lastMessage.createdAt).getTime();
+          return messageTime > lastReadAt ? count + 1 : count;
+        }, 0)
+      : 0;
 
   const sendMessageMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (content: string) => {
       if (!session?.accessToken) throw new Error("Missing session");
       if (!selectedConversationId) throw new Error("Select a conversation first");
-      const content = messageDraft.trim();
-      if (!content) throw new Error("Message cannot be empty");
       if (!socketRef.current || socketState !== "connected") {
         throw new Error("Socket disconnected");
       }
@@ -322,8 +331,20 @@ export default function ChatDock({ session }: Props) {
         );
       });
     },
+    onMutate: async (content) => {
+      const nextDraft = content.trim();
+      if (nextDraft) {
+        setMessageDraft("");
+      }
+
+      return { previousDraft: content };
+    },
+    onError: (_error, _content, context) => {
+      if (context?.previousDraft) {
+        setMessageDraft(context.previousDraft);
+      }
+    },
     onSuccess: async () => {
-      setMessageDraft("");
       if (selectedConversationId && session?.accessToken) {
         await Promise.all([
           queryClient.invalidateQueries({
@@ -378,7 +399,7 @@ export default function ChatDock({ session }: Props) {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-3">
+    <div className="fixed inset-x-2 bottom-2 md:inset-x-auto md:right-4 md:bottom-4 z-50 flex flex-col items-end gap-3">
       {isOpen ? (
         <div className="w-[calc(100vw-1rem)] max-w-[920px] overflow-hidden rounded-[1.5rem] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.97),rgba(248,248,246,0.92))] shadow-[0_24px_100px_-28px_rgba(0,0,0,0.45)] backdrop-blur-2xl dark:bg-[linear-gradient(180deg,rgba(24,24,24,0.96),rgba(18,18,18,0.92))]">
           <div className="flex items-center justify-between border-b border-border/70 px-4 py-3">
@@ -407,8 +428,11 @@ export default function ChatDock({ session }: Props) {
             </div>
           </div>
 
-          <div className="grid h-[min(72vh,760px)] grid-cols-1 md:grid-cols-[320px_1fr]">
-            <aside className="flex h-full flex-col border-b border-border/70 md:border-b-0 md:border-r">
+          <div className="grid h-[85dvh] min-h-0 overflow-hidden md:h-[min(72vh,760px)] grid-cols-1 md:grid-cols-[320px_1fr]">
+            <aside className={cn(
+              "flex h-full min-h-0 flex-col border-b border-border/70 md:border-b-0 md:border-r",
+              isMobile && showMobileChat && "hidden"
+            )}>
               <div className="border-b border-border/70 p-4">
                 <div className="flex rounded-full border border-border p-1">
                   <button
@@ -438,7 +462,7 @@ export default function ChatDock({ session }: Props) {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto">
+              <div className="flex-1 min-h-0 overflow-y-auto">
                 {activeTab === "chats" ? (
                   conversationsQuery.isLoading ? (
                     <div className="p-4 space-y-3">
@@ -471,7 +495,10 @@ export default function ChatDock({ session }: Props) {
                           <button
                             key={conversation.id}
                             type="button"
-                            onClick={() => setSelectedConversationId(conversation.id)}
+                            onClick={() => {
+                              setSelectedConversationId(conversation.id);
+                              if (isMobile) setShowMobileChat(true);
+                            }}
                             className={cn(
                               "flex w-full items-start gap-3 rounded-2xl px-3 py-3 text-left transition-colors",
                               isActive ? "bg-foreground text-background" : "hover:bg-muted",
@@ -560,7 +587,7 @@ export default function ChatDock({ session }: Props) {
                       </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto">
+                    <div className="flex-1 min-h-0 overflow-y-auto">
                       {friendsQuery.isLoading ? (
                         <div className="p-4 space-y-3">
                           <div className="h-14 animate-pulse rounded-2xl bg-muted" />
@@ -639,11 +666,23 @@ export default function ChatDock({ session }: Props) {
               </div>
             </aside>
 
-            <section className="flex h-full flex-col bg-[radial-gradient(circle_at_top,rgba(0,0,0,0.03),transparent_40%)]">
+            <section className={cn(
+              "flex h-full min-h-0 flex-col overflow-hidden bg-[radial-gradient(circle_at_top,rgba(0,0,0,0.03),transparent_40%)]",
+              isMobile && !showMobileChat && "hidden"
+            )}>
               {activeConversation ? (
                 <>
-                  <div className="flex items-center justify-between border-b border-border/70 px-4 py-3">
+                  <div className="shrink-0 flex items-center justify-between border-b border-border/70 px-4 py-3">
                     <div className="flex items-center gap-3">
+                      {isMobile && (
+                        <button
+                          type="button"
+                          onClick={() => setShowMobileChat(false)}
+                          className="flex shrink-0 items-center justify-center rounded-full p-1.5 text-muted-foreground hover:bg-muted -ml-1"
+                        >
+                          <ArrowLeftIcon className="size-5" />
+                        </button>
+                      )}
                       <Avatar className="size-10 border border-border/80">
                         <AvatarImage
                           src={
@@ -677,7 +716,7 @@ export default function ChatDock({ session }: Props) {
 
                   <div
                     ref={scrollRef}
-                    className="flex-1 space-y-3 overflow-y-auto px-4 py-4"
+                    className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 py-4"
                   >
                     {messagesQuery.isLoading ? (
                       <>
@@ -746,11 +785,13 @@ export default function ChatDock({ session }: Props) {
                   </div>
 
                   <form
-                    className="border-t border-border/70 p-4"
+                    className="shrink-0 border-t border-border/70 p-4"
                     onSubmit={(event) => {
                       event.preventDefault();
                       if (sendMessageMutation.isPending) return;
-                      sendMessageMutation.mutate();
+                      const content = messageDraft.trim();
+                      if (!content) return;
+                      sendMessageMutation.mutate(content);
                     }}
                   >
                     <div className="rounded-[1.25rem] border border-border bg-background p-3 shadow-inner">
@@ -760,14 +801,15 @@ export default function ChatDock({ session }: Props) {
                         onKeyDown={(event) => {
                           if (event.key === "Enter" && !event.shiftKey) {
                             event.preventDefault();
-                            if (!sendMessageMutation.isPending && messageDraft.trim()) {
-                              sendMessageMutation.mutate();
+                            const content = messageDraft.trim();
+                            if (!sendMessageMutation.isPending && content) {
+                              sendMessageMutation.mutate(content);
                             }
                           }
                         }}
                         placeholder="Write a message..."
                         rows={3}
-                        className="min-h-0 resize-none border-0 bg-transparent px-0 py-0 shadow-none focus-visible:ring-0"
+                        className="max-h-32 min-h-16 resize-none overflow-y-auto border-0 bg-transparent px-0 py-0 shadow-none focus-visible:ring-0"
                       />
                       <div className="mt-3 flex items-center justify-between gap-3">
                         <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
@@ -804,7 +846,14 @@ export default function ChatDock({ session }: Props) {
       ) : null}
 
       <Button
-        onClick={() => setIsOpen((value) => !value)}
+        onClick={() => {
+          setIsOpen((value) => {
+            if (value) {
+              setShowMobileChat(false);
+            }
+            return !value;
+          });
+        }}
         className={cn(
           "group h-14 rounded-full px-5 shadow-[0_20px_60px_-24px_rgba(0,0,0,0.45)]",
           isOpen ? "bg-foreground text-background" : "bg-foreground text-background",
