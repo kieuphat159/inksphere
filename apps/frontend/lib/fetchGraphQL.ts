@@ -2,9 +2,9 @@ import { getSession } from './session';
 import { AuthError, graphqlRequest } from './graphqlRequest';
 import { redirect } from 'next/navigation';
 
-export const fetchGraphQL = async <T = Record<string, unknown>>(query: string, variables = {}) => {
+export const fetchGraphQL = async (query: string, variables = {}): Promise<any> => {
     try {
-        return await graphqlRequest<T>(query, variables);
+        return await graphqlRequest(query, variables);
     } catch (err) {
         if (err instanceof AuthError) {
             throw err;
@@ -14,13 +14,13 @@ export const fetchGraphQL = async <T = Record<string, unknown>>(query: string, v
     }
 }
 
-export const authFetchGraphQL = async <T = Record<string, unknown>>(query: string, variables = {}) => {
+export const authFetchGraphQL = async (query: string, variables = {}): Promise<any> => {
     const session = await getSession();
     if (!session?.accessToken) {
         redirect('/auth/signin');
     }
     try {
-        return await graphqlRequest<T>(query, variables, {
+        return await graphqlRequest(query, variables, {
             Authorization: `Bearer ${session.accessToken}`,
         });
     } catch (err) {

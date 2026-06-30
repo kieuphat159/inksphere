@@ -38,7 +38,7 @@ export const fetchPostById = async (id: number) => {
 export const fetchUserPosts = async ({ page, pageSize }: { page?: number; pageSize?: number }) => {
     const { skip, take } = transformTakeSkip({ page, pageSize });
     const data = await authFetchGraphQL(print(GET_USER_POSTS), { skip, take });
-    return { posts: data.getUserPosts as Post[], totalPosts: data.userPostsCount };
+    return { posts: data.getUserPosts as Post[], totalPosts: data.userPostsCount as number };
 };
 
 export async function saveNewPost(state: PostFormState, formData: FormData): Promise<PostFormState> {

@@ -66,7 +66,6 @@ export async function signIn(state: SignUpFormState, formData: FormData): Promis
         revalidatePath('/');
         redirect('/');
     } catch (err: any) {
-        // redirect() throws internally — let it propagate
         if (err?.digest?.startsWith('NEXT_REDIRECT')) throw err;
         return {
             data: Object.fromEntries(formData.entries()),
@@ -74,4 +73,4 @@ export async function signIn(state: SignUpFormState, formData: FormData): Promis
             message: "An unexpected error occurred. Please try again.",
         };
     }
-}
+}

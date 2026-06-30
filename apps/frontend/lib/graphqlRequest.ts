@@ -81,5 +81,5 @@ export async function graphqlRequest<T = Record<string, unknown>>(
     throw new Error(message);
   }
 
-  return result.data as T;
+  return result!.data as T;
 }
