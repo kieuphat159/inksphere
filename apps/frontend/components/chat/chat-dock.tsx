@@ -816,7 +816,10 @@ export default function ChatDock({ session }: Props) {
                     <div className="rounded-[1.25rem] border border-border bg-background p-3 shadow-inner">
                       <Textarea
                         value={messageDraft}
-                        onChange={(event) => setMessageDraft(event.target.value)}
+                        onChange={(event) => {
+                          if (sendMessageMutation.isPending) return;
+                          setMessageDraft(event.target.value);
+                        }}
                         onKeyDown={(event) => {
                           if (event.key === "Enter" && !event.shiftKey) {
                             event.preventDefault();
