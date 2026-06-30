@@ -12,26 +12,60 @@ type Props = {
     user?: SessionUser;
 }
 
+type LikeData = {
+    likeCount: number;
+    userLikedPost: boolean;
+}
+
 const Like = (props: Props) => {
     const queryClient = useQueryClient();
     const canInteract = !!props.user?.id;
+    const queryKey = ['GET_POST_LIKES_DATA', props.postId] as const;
 
-    const { data } = useQuery({
-        queryKey: ['GET_POST_LIKES_DATA', props.postId],
-        queryFn: async () => await getPostLikeData(props.postId),
+    const { data } = useQuery<LikeData>({
+        queryKey,
+        queryFn: () => getPostLikeData(props.postId),
     })
+
+    const updateLikeCache = (liked: boolean) => {
+        queryClient.setQueryData<LikeData>(queryKey, (current) => {
+            const baseCount = current?.likeCount ?? 0;
+            const alreadyLiked = current?.userLikedPost ?? false;
+
+            if (alreadyLiked === liked) {
+                return current ?? { likeCount: baseCount, userLikedPost: liked };
+            }
+
+            return {
+                likeCount: liked ? baseCount + 1 : Math.max(baseCount - 1, 0),
+                userLikedPost: liked,
+            };
+        });
+    }
 
     const likeMutation = useMutation({
         mutationFn: () => likePost(props.postId),
-        onSuccess: async () => {
-            await queryClient.invalidateQueries({ queryKey: ['GET_POST_LIKES_DATA', props.postId] });
+        onMutate: () => {
+            updateLikeCache(true);
+        },
+        onError: () => {
+            updateLikeCache(false);
+        },
+        onSettled: () => {
+            void queryClient.invalidateQueries({ queryKey });
         },
     })
 
     const unlikeMutation = useMutation({
         mutationFn: () => unlikePost(props.postId),
-        onSuccess: async () => {
-            await queryClient.invalidateQueries({ queryKey: ['GET_POST_LIKES_DATA', props.postId] });
+        onMutate: () => {
+            updateLikeCache(false);
+        },
+        onError: () => {
+            updateLikeCache(true);
+        },
+        onSettled: () => {
+            void queryClient.invalidateQueries({ queryKey });
         },
     })
 
