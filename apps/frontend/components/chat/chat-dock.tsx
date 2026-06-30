@@ -447,7 +447,7 @@ export default function ChatDock({ session }: Props) {
             </div>
           </div>
 
-          <div className="grid h-[85dvh] min-h-0 overflow-hidden md:h-[min(72vh,760px)] grid-cols-1 md:grid-cols-[320px_1fr]">
+          <div className="grid h-[72dvh] min-h-0 overflow-hidden md:h-[min(72vh,760px)] grid-cols-1 md:grid-cols-[320px_1fr]">
             <aside className={cn(
               "flex h-full min-h-0 flex-col border-b border-border/70 md:border-b-0 md:border-r",
               isMobile && showMobileChat && "hidden"
