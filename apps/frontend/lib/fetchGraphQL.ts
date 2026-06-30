@@ -1,21 +1,32 @@
 import { getSession } from './session';
-import { graphqlRequest } from './graphqlRequest';
+import { AuthError, graphqlRequest } from './graphqlRequest';
+import { redirect } from 'next/navigation';
 
-export const fetchGraphQL = async (query: string, variables = {}) => {
+export const fetchGraphQL = async <T = Record<string, unknown>>(query: string, variables = {}) => {
     try {
-        return await graphqlRequest<any>(query, variables);
+        return await graphqlRequest<T>(query, variables);
     } catch (err) {
+        if (err instanceof AuthError) {
+            throw err;
+        }
         console.error("Network error:", err);
         return { errors: [{ message: "Network error. Please try again." }], data: null };
     }
 }
 
-export const authFetchGraphQL = async (query: string, variables = {}) => {
+export const authFetchGraphQL = async <T = Record<string, unknown>>(query: string, variables = {}) => {
     const session = await getSession();
     if (!session?.accessToken) {
-        throw new Error("Missing authenticated session");
+        redirect('/auth/signin');
     }
-    return graphqlRequest<any>(query, variables, {
-        Authorization: `Bearer ${session.accessToken}`,
-    });
+    try {
+        return await graphqlRequest<T>(query, variables, {
+            Authorization: `Bearer ${session.accessToken}`,
+        });
+    } catch (err) {
+        if (err instanceof AuthError) {
+            redirect('/api/auth/signout');
+        }
+        throw err;
+    }
 }

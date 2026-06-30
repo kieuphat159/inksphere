@@ -45,7 +45,7 @@ export async function getSession() {
         return payload as Session;
     } catch (error) {
         console.error("Failed to verify session token:", error);
-        redirect('/auth/signin');
+        redirect('/api/auth/signout');
     }
 }
 

@@ -98,6 +98,17 @@ function avatarFallback(user?: ChatUser | null) {
   return user?.name?.slice(0, 2).toUpperCase() ?? "??";
 }
 
+function shouldSignOutFromError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return /unauthor|jwt expired|token expired/i.test(message);
+}
+
+function redirectToSignOut() {
+  if (typeof window !== "undefined") {
+    window.location.assign("/api/auth/signout");
+  }
+}
+
 export default function ChatDock({ session }: Props) {
   const queryClient = useQueryClient();
   const socketRef = useRef<Socket | null>(null);
@@ -176,7 +187,11 @@ export default function ChatDock({ session }: Props) {
       setSocketState("idle");
     });
 
-    socket.on("connect_error", () => {
+    socket.on("connect_error", (error) => {
+      if (shouldSignOutFromError(error)) {
+        redirectToSignOut();
+        return;
+      }
       setSocketState("idle");
     });
 
@@ -340,6 +355,10 @@ export default function ChatDock({ session }: Props) {
       return { previousDraft: content };
     },
     onError: (_error, _content, context) => {
+      if (shouldSignOutFromError(_error)) {
+        redirectToSignOut();
+        return;
+      }
       if (context?.previousDraft) {
         setMessageDraft(context.previousDraft);
       }

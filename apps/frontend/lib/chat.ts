@@ -1,5 +1,5 @@
 import { BACKEND_URL } from "./constants";
-import { graphqlRequest } from "./graphqlRequest";
+import { AuthError, graphqlRequest } from "./graphqlRequest";
 import type { Session } from "./session";
 import type { User } from "./types/modelTypes";
 import { print } from "graphql";
@@ -18,7 +18,7 @@ export type ChatMessage = {
   type: "TEXT" | "IMAGE" | "FILE" | "SYSTEM";
   content?: string | null;
   attachmentUrl?: string | null;
-  metadata?: Record<string, any> | null;
+  metadata?: Record<string, unknown> | null;
   editedAt?: string | null;
   deletedAt?: string | null;
   createdAt: string;
@@ -52,6 +52,12 @@ export type ChatConversation = {
 
 export type ChatFriend = Pick<User, "id" | "name" | "email" | "avatar" | "bio">;
 
+function redirectToSignOut() {
+  if (typeof window !== "undefined") {
+    window.location.assign("/api/auth/signout");
+  }
+}
+
 async function chatRequest<T>(session: Session, path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`${BACKEND_URL}/chat${path}`, {
     ...init,
@@ -65,6 +71,10 @@ async function chatRequest<T>(session: Session, path: string, init: RequestInit 
 
   if (!response.ok) {
     const body = await response.text();
+    if (response.status === 401 || response.status === 403) {
+      redirectToSignOut();
+      throw new AuthError(body || "Your session expired. Please sign in again.", response.status);
+    }
     throw new Error(body || `Chat request failed with status ${response.status}`);
   }
 
@@ -123,5 +133,12 @@ export function fetchFriends(session: Session) {
     {
       Authorization: `Bearer ${session.accessToken}`,
     },
-  ).then((data) => data.friends);
+  )
+    .then((data) => data.friends)
+    .catch((error) => {
+      if (error instanceof AuthError) {
+        redirectToSignOut();
+      }
+      throw error;
+    });
 }
