@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Hero from '@/components/hero';
 
 export const metadata = {
   title: 'About – InkSphere',
@@ -23,22 +24,7 @@ const features = [
 export default function AboutPage() {
   return (
     <main className="flex flex-col">
-      {/* Hero — matches homepage dark hero style */}
-      <section className="bg-[#121212] dark:bg-[#0a0a0a] text-white pt-28 pb-16 md:pt-36 md:pb-24 border-b border-white/10">
-        <div className="max-w-5xl mx-auto px-6">
-          <span className="font-mono text-xs uppercase tracking-widest text-slate-400 mb-4 block">
-            EST. 2026 // ABOUT THE PLATFORM
-          </span>
-          <h1 className="text-5xl md:text-7xl font-serif font-black leading-tight tracking-tight mb-6">
-            A space for words<br />
-            <span className="italic font-normal text-slate-300">that matter.</span>
-          </h1>
-          <div className="h-[1px] w-20 bg-slate-500 my-6" />
-          <p className="text-slate-300 text-lg md:text-xl font-serif max-w-2xl leading-relaxed">
-            InkSphere is a blog-first social platform where writers share essays, stories, and ideas — and stay connected through friendships, real-time chat, and video conversations.
-          </p>
-        </div>
-      </section>
+      <Hero />
 
       {/* Features */}
       <section className="bg-background text-foreground py-20 border-b border-border">
