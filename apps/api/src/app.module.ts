@@ -14,6 +14,7 @@ import { FriendModule } from './friend/friend.module';
 import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 import { ChatModule } from './chat/chat.module';
+import { CallModule } from './call/call.module';
 
 @Module({
   imports: [
@@ -31,7 +32,8 @@ import { ChatModule } from './chat/chat.module';
     LikeModule,
     FriendModule,
     AuthModule,
-    ChatModule],
+    ChatModule,
+    CallModule],
   controllers: [AppController],
   providers: [AppService],
 })
