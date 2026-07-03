@@ -85,6 +85,7 @@ export default function ChatDock({ session }: Props) {
   const remoteStreamRef = useRef<MediaStream | null>(null);
   const pendingCallRef = useRef<{ conversationId: number; targetUserId: number } | null>(null);
   const queuedIceCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
+  const iceServersPromiseRef = useRef<Promise<RTCIceServer[]> | null>(null);
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -195,13 +196,38 @@ export default function ChatDock({ session }: Props) {
     }
   }
 
+  async function getIceServers(): Promise<RTCIceServer[]> {
+    if (iceServersPromiseRef.current) return iceServersPromiseRef.current;
+
+    iceServersPromiseRef.current = (async () => {
+      try {
+        const response = await fetch(`${BACKEND_URL}/call/ice-servers`, {
+          cache: "no-store",
+        });
+
+        if (!response.ok) throw new Error("Failed to fetch ICE servers");
+
+        return (await response.json()) as RTCIceServer[];
+      } catch (error) {
+        console.error("Failed to fetch ICE servers:", error);
+        return [
+          { urls: "stun:stun.l.google.com:19302" },
+          { urls: "stun:stun1.l.google.com:19302" },
+        ];
+      }
+    })();
+
+    return iceServersPromiseRef.current;
+  }
+
   async function ensurePeerConnection(targetUserId: number) {
     if (peerConnectionRef.current) {
       return peerConnectionRef.current;
     }
 
+    const iceServers = await getIceServers();
     const peerConnection = new RTCPeerConnection({
-      iceServers: [{ urls: ["stun:stun.l.google.com:19302"] }],
+      iceServers,
     });
 
     peerConnection.onicecandidate = (event) => {
