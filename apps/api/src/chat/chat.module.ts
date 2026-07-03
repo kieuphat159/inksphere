@@ -4,10 +4,17 @@ import { ChatService } from './chat.service';
 import { ChatController } from './chat.controller';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { AuthModule } from 'src/auth/auth.module';
+import { ChatRateLimitService } from './chat-rate-limit.service';
+import { ChatMessageQueueService } from './chat-message-queue.service';
 
 @Module({
   imports: [PrismaModule, AuthModule],
-  providers: [ChatGateway, ChatService],
+  providers: [
+    ChatGateway,
+    ChatService,
+    ChatRateLimitService,
+    ChatMessageQueueService,
+  ],
   controllers: [ChatController],
   exports: [ChatService],
 })

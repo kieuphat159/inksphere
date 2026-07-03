@@ -11,6 +11,8 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { Server, Socket } from 'socket.io';
 import { AuthJwtPayload } from 'src/auth/types/auth.jwtPayload';
+import { ChatMessageQueueService } from './chat-message-queue.service';
+import { ChatRateLimitService } from './chat-rate-limit.service';
 import { ChatService } from './chat.service';
 import { JoinConversationDto } from './dto/join-conversation.dto';
 import { MarkReadDto } from './dto/mark-read.dto';
@@ -33,10 +35,20 @@ type AuthedSocket = Socket & {
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
+  private readonly sendRateLimit = Math.max(
+    Number(process.env.CHAT_SEND_RATE_LIMIT ?? 8),
+    1,
+  );
+  private readonly sendRateWindowMs = Math.max(
+    Number(process.env.CHAT_SEND_RATE_WINDOW_MS ?? 5_000),
+    1_000,
+  );
 
   constructor(
     private readonly chatService: ChatService,
     private readonly jwtService: JwtService,
+    private readonly chatRateLimitService: ChatRateLimitService,
+    private readonly chatMessageQueueService: ChatMessageQueueService,
   ) {}
 
   async handleConnection(client: AuthedSocket) {
@@ -75,7 +87,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() body: JoinConversationDto,
   ) {
     this.requireUser(client);
-    await this.chatService.ensureConversationMember(body.conversationId, client.data.user!.id);
+    await this.chatService.ensureConversationMember(
+      body.conversationId,
+      client.data.user!.id,
+    );
     await client.join(this.conversationRoom(body.conversationId));
 
     return {
@@ -92,26 +107,70 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() body: SendMessageDto,
   ) {
     const user = this.requireUser(client);
-    const member = await this.chatService.ensureConversationMember(body.conversationId, user.id);
+    const rateLimit = this.chatRateLimitService.consume(
+      `message:send:${user.id}`,
+      this.sendRateLimit,
+      this.sendRateWindowMs,
+    );
 
-    this.chatService
-      .sendMessage(user.id, body.conversationId, body, member)
-      .then(async (result) => {
-        this.server.to(this.conversationRoom(body.conversationId)).emit('message:new', {
-          ...result.message,
-          tempId: body.tempId,
-        });
+    if (!rateLimit.allowed) {
+      return {
+        ok: false,
+        tempId: body.tempId,
+        conversationId: body.conversationId,
+        error: `Rate limit exceeded. Retry in ${Math.ceil(rateLimit.retryAfterMs / 1000)}s.`,
+      };
+    }
 
-        const participants = await this.chatService.getConversationMembers(body.conversationId);
-        this.broadcastConversationUpdated(body.conversationId, participants.map((p) => p.userId));
-      })
-      .catch((error) => {
-        client.emit('message:error', {
-          tempId: body.tempId,
-          conversationId: body.conversationId,
-          error: error?.message ?? 'Failed to send message',
+    const member = await this.chatService.ensureConversationMember(
+      body.conversationId,
+      user.id,
+    );
+
+    try {
+      this.chatMessageQueueService
+        .enqueue(() =>
+          this.chatService.sendMessage(
+            user.id,
+            body.conversationId,
+            body,
+            member,
+          ),
+        )
+        .then(async (result) => {
+          this.server
+            .to(this.conversationRoom(body.conversationId))
+            .emit('message:new', {
+              ...result.message,
+              tempId: body.tempId,
+            });
+
+          const participants = await this.chatService.getConversationMembers(
+            body.conversationId,
+          );
+          this.broadcastConversationUpdated(
+            body.conversationId,
+            participants.map((p) => p.userId),
+          );
+        })
+        .catch((error) => {
+          client.emit('message:error', {
+            tempId: body.tempId,
+            conversationId: body.conversationId,
+            error: error?.message ?? 'Failed to send message',
+          });
         });
-      });
+    } catch (error) {
+      return {
+        ok: false,
+        tempId: body.tempId,
+        conversationId: body.conversationId,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Chat is busy. Please retry shortly.',
+      };
+    }
 
     return {
       ok: true,
@@ -131,7 +190,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       throw new WsException('conversationId is required');
     }
 
-    const member = await this.chatService.markConversationRead(user.id, body.conversationId, body.readAt);
+    const member = await this.chatService.markConversationRead(
+      user.id,
+      body.conversationId,
+      body.readAt,
+    );
 
     this.server.to(this.userRoom(user.id)).emit('conversation:read', {
       conversationId: body.conversationId,
@@ -147,7 +210,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     };
   }
 
-  private broadcastConversationUpdated(conversationId: number, userIds: number[]) {
+  private broadcastConversationUpdated(
+    conversationId: number,
+    userIds: number[],
+  ) {
     for (const userId of userIds) {
       this.server.to(this.userRoom(userId)).emit('conversation:updated', {
         conversationId,

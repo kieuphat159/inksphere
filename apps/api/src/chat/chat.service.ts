@@ -1,5 +1,15 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { MessageType, ConversationType, ConversationMemberRole, ConversationMember } from '@prisma/client';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  MessageType,
+  ConversationType,
+  ConversationMemberRole,
+  ConversationMember,
+} from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateGroupConversationDto } from './dto/create-group-conversation.dto';
 
@@ -10,6 +20,23 @@ type MessageListOptions = {
 
 @Injectable()
 export class ChatService {
+  private readonly userCache = new Map<
+    number,
+    { expiresAt: number; value: { id: number } | null }
+  >();
+  private readonly memberCache = new Map<
+    string,
+    { expiresAt: number; value: ConversationMember }
+  >();
+  private readonly userCacheTtlMs = Math.max(
+    Number(process.env.CHAT_USER_CACHE_TTL_MS ?? 30000),
+    1000,
+  );
+  private readonly membershipCacheTtlMs = Math.max(
+    Number(process.env.CHAT_MEMBERSHIP_CACHE_TTL_MS ?? 15000),
+    1000,
+  );
+
   constructor(private readonly prisma: PrismaService) {}
 
   async getConversations(userId: number) {
@@ -58,7 +85,11 @@ export class ChatService {
     });
   }
 
-  async getMessages(userId: number, conversationId: number, options: MessageListOptions = {}) {
+  async getMessages(
+    userId: number,
+    conversationId: number,
+    options: MessageListOptions = {},
+  ) {
     await this.ensureConversationMember(conversationId, userId);
 
     const messages = await this.prisma.message.findMany({
@@ -98,7 +129,9 @@ export class ChatService {
 
   async createDirectConversation(userId: number, participantId: number) {
     if (userId === participantId) {
-      throw new BadRequestException('Cannot create a direct conversation with yourself');
+      throw new BadRequestException(
+        'Cannot create a direct conversation with yourself',
+      );
     }
 
     const participants = await this.prisma.user.findMany({
@@ -177,11 +210,16 @@ export class ChatService {
     });
   }
 
-  async createGroupConversation(userId: number, dto: CreateGroupConversationDto) {
+  async createGroupConversation(
+    userId: number,
+    dto: CreateGroupConversationDto,
+  ) {
     const memberIds = Array.from(new Set([userId, ...dto.memberIds]));
 
     if (memberIds.length < 2) {
-      throw new BadRequestException('A group conversation needs at least two members');
+      throw new BadRequestException(
+        'A group conversation needs at least two members',
+      );
     }
 
     const foundUsers = await this.prisma.user.findMany({
@@ -207,7 +245,10 @@ export class ChatService {
         members: {
           create: memberIds.map((memberId) => ({
             userId: memberId,
-            role: memberId === userId ? ConversationMemberRole.OWNER : ConversationMemberRole.MEMBER,
+            role:
+              memberId === userId
+                ? ConversationMemberRole.OWNER
+                : ConversationMemberRole.MEMBER,
           })),
         },
       },
@@ -230,11 +271,18 @@ export class ChatService {
   async sendMessage(
     userId: number,
     conversationId: number,
-    data: { content?: string; type?: MessageType; attachmentUrl?: string; metadata?: any },
+    data: {
+      content?: string;
+      type?: MessageType;
+      attachmentUrl?: string;
+      metadata?: any;
+    },
     member?: ConversationMember,
   ) {
-    const conversationMember = member ?? await this.ensureConversationMember(conversationId, userId);
+    const conversationMember =
+      member ?? (await this.ensureConversationMember(conversationId, userId));
     this.validateMessagePayload(data);
+    const lastReadAt = new Date();
 
     const message = await this.prisma.$transaction(async (tx) => {
       const createdMessage = await tx.message.create({
@@ -274,11 +322,16 @@ export class ChatService {
           },
         },
         data: {
-          lastReadAt: new Date(),
+          lastReadAt,
         },
       });
 
       return createdMessage;
+    });
+
+    this.cacheConversationMember({
+      ...conversationMember,
+      lastReadAt,
     });
 
     return {
@@ -288,10 +341,14 @@ export class ChatService {
     };
   }
 
-  async markConversationRead(userId: number, conversationId: number, readAt?: string | Date) {
+  async markConversationRead(
+    userId: number,
+    conversationId: number,
+    readAt?: string | Date,
+  ) {
     await this.ensureConversationMember(conversationId, userId);
 
-    return this.prisma.conversationMember.update({
+    const member = await this.prisma.conversationMember.update({
       where: {
         conversationId_userId: {
           conversationId,
@@ -302,6 +359,9 @@ export class ChatService {
         lastReadAt: readAt ? new Date(readAt) : new Date(),
       },
     });
+
+    this.cacheConversationMember(member);
+    return member;
   }
 
   async getConversationMembers(conversationId: number) {
@@ -316,7 +376,12 @@ export class ChatService {
   }
 
   async findUserById(userId: number) {
-    return this.prisma.user.findUnique({
+    const cachedUser = this.userCache.get(userId);
+    if (cachedUser && cachedUser.expiresAt > Date.now()) {
+      return cachedUser.value;
+    }
+
+    const user = await this.prisma.user.findUnique({
       where: {
         id: userId,
       },
@@ -324,9 +389,22 @@ export class ChatService {
         id: true,
       },
     });
+
+    this.userCache.set(userId, {
+      value: user,
+      expiresAt: Date.now() + this.userCacheTtlMs,
+    });
+
+    return user;
   }
 
   async ensureConversationMember(conversationId: number, userId: number) {
+    const cacheKey = this.memberCacheKey(conversationId, userId);
+    const cachedMember = this.memberCache.get(cacheKey);
+    if (cachedMember && cachedMember.expiresAt > Date.now()) {
+      return cachedMember.value;
+    }
+
     const member = await this.prisma.conversationMember.findUnique({
       where: {
         conversationId_userId: {
@@ -340,15 +418,36 @@ export class ChatService {
       throw new ForbiddenException('You are not a member of this conversation');
     }
 
+    this.cacheConversationMember(member);
     return member;
   }
 
-  private validateMessagePayload(data: { content?: string; type?: MessageType; attachmentUrl?: string }) {
+  private cacheConversationMember(member: ConversationMember) {
+    this.memberCache.set(
+      this.memberCacheKey(member.conversationId, member.userId),
+      {
+        value: member,
+        expiresAt: Date.now() + this.membershipCacheTtlMs,
+      },
+    );
+  }
+
+  private memberCacheKey(conversationId: number, userId: number) {
+    return `${conversationId}:${userId}`;
+  }
+
+  private validateMessagePayload(data: {
+    content?: string;
+    type?: MessageType;
+    attachmentUrl?: string;
+  }) {
     const hasContent = !!data.content?.trim();
     const hasAttachment = !!data.attachmentUrl?.trim();
 
     if (!hasContent && !hasAttachment) {
-      throw new BadRequestException('Message content or attachmentUrl is required');
+      throw new BadRequestException(
+        'Message content or attachmentUrl is required',
+      );
     }
 
     if (data.type === MessageType.TEXT && !hasContent) {
