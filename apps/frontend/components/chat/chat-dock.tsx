@@ -4,35 +4,29 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { io, Socket } from "socket.io-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  CircleStackIcon,
-  MagnifyingGlassIcon,
-  PaperAirplaneIcon,
-  PencilSquareIcon,
-  PlusIcon,
-  ChatBubbleLeftRightIcon,
-  XMarkIcon,
-  ArrowLeftIcon,
-  VideoCameraIcon,
-} from "@heroicons/react/24/outline";
+import { ChatBubbleLeftRightIcon, XMarkIcon } from "@heroicons/react/24/outline";
 
 import { BACKEND_URL } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import type { Session } from "@/lib/session";
 import {
   ChatConversation,
   ChatMessage,
-  ChatUser,
   createDirectConversation,
   fetchConversations,
   fetchFriends,
   fetchMessages,
   markConversationRead,
 } from "@/lib/chat";
+import ChatSidebar from "./chat-sidebar";
+import ChatThread from "./chat-thread";
+import {
+  redirectToSignOut,
+  shouldSignOutFromError,
+  type ChatCallState,
+  type SidebarTab,
+} from "./chat-utils";
 
 type SocketMessage = ChatMessage;
 
@@ -41,74 +35,6 @@ type Props = {
 };
 
 type SocketState = "idle" | "connecting" | "connected";
-type SidebarTab = "chats" | "friends";
-
-function getConversationLabel(conversation: ChatConversation, currentUserId?: string) {
-  if (conversation.title) return conversation.title;
-
-  const otherMember = conversation.members.find((member) => String(member.userId) !== currentUserId);
-  if (otherMember?.user?.name) return otherMember.user.name;
-
-  if (conversation.type === "GROUP") {
-    return `Group chat #${conversation.id}`;
-  }
-
-  return "Direct chat";
-}
-
-function getConversationSubtitle(conversation: ChatConversation, currentUserId?: string) {
-  if (conversation.type === "GROUP") {
-    return `${conversation.members.length} members`;
-  }
-
-  const otherMember = conversation.members.find((member) => String(member.userId) !== currentUserId);
-  return otherMember?.user?.name ?? "Direct message";
-}
-
-function formatTime(input?: string | Date | null) {
-  if (!input) return "";
-
-  const date = typeof input === "string" ? new Date(input) : input;
-  return new Intl.DateTimeFormat("en", {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
-}
-
-function formatConversationTime(input?: string | null) {
-  if (!input) return "";
-
-  const date = new Date(input);
-  const now = new Date();
-  const sameDay =
-    date.getFullYear() === now.getFullYear() &&
-    date.getMonth() === now.getMonth() &&
-    date.getDate() === now.getDate();
-
-  if (sameDay) {
-    return formatTime(date);
-  }
-
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-  }).format(date);
-}
-
-function avatarFallback(user?: ChatUser | null) {
-  return user?.name?.slice(0, 2).toUpperCase() ?? "??";
-}
-
-function shouldSignOutFromError(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error ?? "");
-  return /unauthor|jwt expired|token expired/i.test(message);
-}
-
-function redirectToSignOut() {
-  if (typeof window !== "undefined") {
-    window.location.assign("/api/auth/signout");
-  }
-}
 
 export default function ChatDock({ session }: Props) {
   const queryClient = useQueryClient();
@@ -128,7 +54,7 @@ export default function ChatDock({ session }: Props) {
   const [activeTab, setActiveTab] = useState<SidebarTab>("chats");
   const [friendFilter, setFriendFilter] = useState("");
   const [socketState, setSocketState] = useState<SocketState>("idle");
-  const [callState, setCallState] = useState<"idle" | "incoming" | "calling" | "connected">("idle");
+  const [callState, setCallState] = useState<ChatCallState>("idle");
   const [incomingCall, setIncomingCall] = useState<{ conversationId: number; fromUserId: number } | null>(null);
   const [localVideoStream, setLocalVideoStream] = useState<MediaStream | null>(null);
   const [remoteVideoStream, setRemoteVideoStream] = useState<MediaStream | null>(null);
@@ -159,24 +85,26 @@ export default function ChatDock({ session }: Props) {
     staleTime: 30_000,
   });
 
+  const effectiveSelectedConversationId = selectedConversationId ?? conversationsQuery.data?.[0]?.id ?? null;
+
   const activeConversation = useMemo(
     () =>
       conversationsQuery.data?.find(
-        (conversation) => conversation.id === selectedConversationId,
+        (conversation) => conversation.id === effectiveSelectedConversationId,
       ) ?? null,
-    [conversationsQuery.data, selectedConversationId],
+    [conversationsQuery.data, effectiveSelectedConversationId],
   );
 
   const messagesQuery = useQuery({
-    queryKey: ["chat", "messages", session?.accessToken, selectedConversationId],
-    queryFn: () => fetchMessages(session!, selectedConversationId!),
-    enabled: !!session?.accessToken && !!selectedConversationId && isOpen,
+    queryKey: ["chat", "messages", session?.accessToken, effectiveSelectedConversationId],
+    queryFn: () => fetchMessages(session!, effectiveSelectedConversationId!),
+    enabled: !!session?.accessToken && !!effectiveSelectedConversationId && isOpen,
     staleTime: 2_000,
   });
 
   useEffect(() => {
-    activeConversationRef.current = selectedConversationId;
-  }, [selectedConversationId]);
+    activeConversationRef.current = effectiveSelectedConversationId;
+  }, [effectiveSelectedConversationId]);
 
   useEffect(() => {
     if (localVideoRef.current && localVideoStream) {
@@ -190,10 +118,82 @@ export default function ChatDock({ session }: Props) {
     }
   }, [remoteVideoStream]);
 
+  function resetCallSession() {
+    peerConnectionRef.current?.close();
+    peerConnectionRef.current = null;
+    localStreamRef.current?.getTracks().forEach((track) => track.stop());
+    localStreamRef.current = null;
+    remoteStreamRef.current = null;
+    pendingCallRef.current = null;
+    queuedIceCandidatesRef.current = [];
+    setLocalVideoStream(null);
+    setRemoteVideoStream(null);
+    setCallState("idle");
+    setIncomingCall(null);
+  }
+
+  function flushPendingIceCandidates(peerConnection: RTCPeerConnection) {
+    while (queuedIceCandidatesRef.current.length) {
+      const candidate = queuedIceCandidatesRef.current.shift();
+      if (!candidate) continue;
+      try {
+        void peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch {
+        queuedIceCandidatesRef.current.unshift(candidate);
+        break;
+      }
+    }
+  }
+
+  async function addIceCandidate(peerConnection: RTCPeerConnection, candidate: RTCIceCandidateInit) {
+    if (!candidate) return;
+
+    try {
+      await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+    } catch {
+      queuedIceCandidatesRef.current.push(candidate);
+    }
+  }
+
+  async function ensurePeerConnection(targetUserId: number) {
+    if (peerConnectionRef.current) {
+      return peerConnectionRef.current;
+    }
+
+    const peerConnection = new RTCPeerConnection({
+      iceServers: [{ urls: ["stun:stun.l.google.com:19302"] }],
+    });
+
+    peerConnection.onicecandidate = (event) => {
+      if (event.candidate && socketRef.current && pendingCallRef.current) {
+        socketRef.current.emit("call:ice-candidate", {
+          targetUserId,
+          candidate: event.candidate.toJSON(),
+        });
+      }
+    };
+
+    peerConnection.ontrack = (event) => {
+      const [stream] = event.streams;
+      if (stream) {
+        remoteStreamRef.current = stream;
+        setRemoteVideoStream(stream);
+      }
+    };
+
+    peerConnection.onconnectionstatechange = () => {
+      if (peerConnection.connectionState === "failed" || peerConnection.connectionState === "closed") {
+        resetCallSession();
+      }
+    };
+
+    peerConnectionRef.current = peerConnection;
+    return peerConnection;
+  }
+
   useEffect(() => {
     if (!session?.accessToken) return;
 
-    setSocketState("connecting");
     const socket = io(BACKEND_URL, {
       transports: ["websocket"],
       auth: {
@@ -347,36 +347,29 @@ export default function ChatDock({ session }: Props) {
   }, [queryClient, session]);
 
   useEffect(() => {
-    if (!isOpen) return;
-    if (!selectedConversationId && conversationsQuery.data?.length) {
-      setSelectedConversationId(conversationsQuery.data[0].id);
-    }
-  }, [conversationsQuery.data, isOpen, selectedConversationId]);
+    if (!isOpen || !effectiveSelectedConversationId || !socketRef.current) return;
+    socketRef.current.emit("conversation:join", { conversationId: effectiveSelectedConversationId });
+  }, [isOpen, effectiveSelectedConversationId]);
 
   useEffect(() => {
-    if (!isOpen || !selectedConversationId || !socketRef.current) return;
-    socketRef.current.emit("conversation:join", { conversationId: selectedConversationId });
-  }, [isOpen, selectedConversationId]);
-
-  useEffect(() => {
-    if (!isOpen || !selectedConversationId || !session?.accessToken) return;
-    void markConversationRead(session, selectedConversationId).then(() => {
+    if (!isOpen || !effectiveSelectedConversationId || !session?.accessToken) return;
+    void markConversationRead(session, effectiveSelectedConversationId).then(() => {
       queryClient.invalidateQueries({
         queryKey: ["chat", "conversations", session.accessToken],
       });
     });
-  }, [isOpen, selectedConversationId, queryClient, session]);
+  }, [isOpen, effectiveSelectedConversationId, queryClient, session]);
 
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
-  }, [messagesQuery.data, selectedConversationId, isOpen]);
+  }, [messagesQuery.data, effectiveSelectedConversationId, isOpen]);
 
   const unreadCount =
     conversationsQuery.data && session?.user?.id
       ? conversationsQuery.data.reduce((count, conversation) => {
-          if (conversation.id === selectedConversationId && isOpen) return count;
+          if (conversation.id === effectiveSelectedConversationId && isOpen) return count;
 
           const lastMessage = conversation.lastMessage;
           if (!lastMessage) return count;
@@ -391,7 +384,7 @@ export default function ChatDock({ session }: Props) {
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
       if (!session?.accessToken) throw new Error("Missing session");
-      if (!selectedConversationId) throw new Error("Select a conversation first");
+      if (!effectiveSelectedConversationId) throw new Error("Select a conversation first");
       if (!socketRef.current || socketState !== "connected") {
         throw new Error("Socket disconnected");
       }
@@ -402,7 +395,7 @@ export default function ChatDock({ session }: Props) {
         socketRef.current?.emit(
           "message:send",
           {
-            conversationId: selectedConversationId,
+            conversationId: effectiveSelectedConversationId,
             content,
             type: "TEXT",
           },
@@ -439,10 +432,10 @@ export default function ChatDock({ session }: Props) {
       }
     },
     onSuccess: async () => {
-      if (selectedConversationId && session?.accessToken) {
+      if (effectiveSelectedConversationId && session?.accessToken) {
         await Promise.all([
           queryClient.invalidateQueries({
-            queryKey: ["chat", "messages", session.accessToken, selectedConversationId],
+            queryKey: ["chat", "messages", session.accessToken, effectiveSelectedConversationId],
           }),
           queryClient.invalidateQueries({
             queryKey: ["chat", "conversations", session.accessToken],
@@ -451,20 +444,6 @@ export default function ChatDock({ session }: Props) {
       }
     },
   });
-
-  const resetCallSession = () => {
-    peerConnectionRef.current?.close();
-    peerConnectionRef.current = null;
-    localStreamRef.current?.getTracks().forEach((track) => track.stop());
-    localStreamRef.current = null;
-    remoteStreamRef.current = null;
-    pendingCallRef.current = null;
-    queuedIceCandidatesRef.current = [];
-    setLocalVideoStream(null);
-    setRemoteVideoStream(null);
-    setCallState("idle");
-    setIncomingCall(null);
-  };
 
   const endCall = () => {
     const pending = pendingCallRef.current;
@@ -479,67 +458,8 @@ export default function ChatDock({ session }: Props) {
     resetCallSession();
   };
 
-  const flushPendingIceCandidates = async (peerConnection: RTCPeerConnection) => {
-    while (queuedIceCandidatesRef.current.length) {
-      const candidate = queuedIceCandidatesRef.current.shift();
-      if (!candidate) continue;
-      try {
-        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-      } catch {
-        queuedIceCandidatesRef.current.unshift(candidate);
-        break;
-      }
-    }
-  };
-
-  const addIceCandidate = async (peerConnection: RTCPeerConnection, candidate: RTCIceCandidateInit) => {
-    if (!candidate) return;
-
-    try {
-      await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-    } catch {
-      queuedIceCandidatesRef.current.push(candidate);
-    }
-  };
-
-  const ensurePeerConnection = async (targetUserId: number) => {
-    if (peerConnectionRef.current) {
-      return peerConnectionRef.current;
-    }
-
-    const peerConnection = new RTCPeerConnection({
-      iceServers: [{ urls: ["stun:stun.l.google.com:19302"] }],
-    });
-
-    peerConnection.onicecandidate = (event) => {
-      if (event.candidate && socketRef.current && pendingCallRef.current) {
-        socketRef.current.emit("call:ice-candidate", {
-          targetUserId,
-          candidate: event.candidate.toJSON(),
-        });
-      }
-    };
-
-    peerConnection.ontrack = (event) => {
-      const [stream] = event.streams;
-      if (stream) {
-        remoteStreamRef.current = stream;
-        setRemoteVideoStream(stream);
-      }
-    };
-
-    peerConnection.onconnectionstatechange = () => {
-      if (peerConnection.connectionState === "failed" || peerConnection.connectionState === "closed") {
-        resetCallSession();
-      }
-    };
-
-    peerConnectionRef.current = peerConnection;
-    return peerConnection;
-  };
-
   const startCall = async () => {
-    if (!session?.accessToken || !selectedConversationId || !activeConversation) return;
+    if (!session?.accessToken || !effectiveSelectedConversationId || !activeConversation) return;
     const otherMember = activeConversation.members.find(
       (member) => String(member.userId) !== String(session.user.id),
     );
@@ -557,14 +477,14 @@ export default function ChatDock({ session }: Props) {
       stream.getTracks().forEach((track) => peerConnection.addTrack(track, stream));
 
       pendingCallRef.current = {
-        conversationId: selectedConversationId,
+        conversationId: effectiveSelectedConversationId,
         targetUserId: otherMember.userId,
       };
 
       socketRef.current.emit(
         "call:invite",
         {
-          conversationId: selectedConversationId,
+          conversationId: effectiveSelectedConversationId,
           targetUserId: otherMember.userId,
         },
         (response: { event?: string }) => {
@@ -634,6 +554,13 @@ export default function ChatDock({ session }: Props) {
 
   const activeMessages = messagesQuery.data ?? [];
 
+  const handleSelectConversation = (conversationId: number) => {
+    setSelectedConversationId(conversationId);
+    if (isMobile) {
+      setShowMobileChat(true);
+    }
+  };
+
   if (!session) {
     return (
       <div className="fixed bottom-4 right-4 z-50">
@@ -656,9 +583,9 @@ export default function ChatDock({ session }: Props) {
   }
 
   return (
-    <div className="fixed inset-x-2 bottom-2 md:inset-x-auto md:right-4 md:bottom-4 z-50 flex flex-col items-end gap-3">
+    <div className="fixed inset-x-2 bottom-2 z-50 flex flex-col items-end gap-3 md:inset-x-auto md:right-4 md:bottom-4">
       {isOpen ? (
-        <div className="w-[calc(100vw-1rem)] max-w-[920px] overflow-hidden rounded-[1.5rem] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.97),rgba(248,248,246,0.92))] shadow-[0_24px_100px_-28px_rgba(0,0,0,0.45)] backdrop-blur-2xl dark:bg-[linear-gradient(180deg,rgba(24,24,24,0.96),rgba(18,18,18,0.92))]">
+        <div className="w-[calc(100vw-1rem)] max-w-[920px] overflow-hidden rounded-3xl border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.97),rgba(248,248,246,0.92))] shadow-[0_24px_100px_-28px_rgba(0,0,0,0.45)] backdrop-blur-2xl dark:bg-[linear-gradient(180deg,rgba(24,24,24,0.96),rgba(18,18,18,0.92))]">
           <div className="flex items-center justify-between border-b border-border/70 px-4 py-3">
             <div className="flex items-center gap-3">
               <span className="flex size-10 items-center justify-center rounded-full bg-foreground text-background">
@@ -669,7 +596,7 @@ export default function ChatDock({ session }: Props) {
                   Messages
                 </p>
                 <p className="text-sm font-medium text-foreground">
-                  {socketState === "connected" ? "Live" : "Connecting..."}
+                  {socketState === "connected" ? "Live" : session?.accessToken ? "Connecting..." : "Idle"}
                 </p>
               </div>
             </div>
@@ -685,489 +612,55 @@ export default function ChatDock({ session }: Props) {
             </div>
           </div>
 
-          <div className="grid h-[72dvh] min-h-0 overflow-hidden md:h-[min(72vh,760px)] grid-cols-1 md:grid-cols-[320px_1fr]">
-            <aside className={cn(
-              "flex h-full min-h-0 flex-col border-b border-border/70 md:border-b-0 md:border-r",
-              isMobile && showMobileChat && "hidden"
-            )}>
-              <div className="border-b border-border/70 p-4">
-                <div className="flex rounded-full border border-border p-1">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("chats")}
-                    className={cn(
-                      "flex-1 rounded-full px-3 py-2 text-[10px] font-mono uppercase tracking-[0.25em] transition-colors",
-                      activeTab === "chats"
-                        ? "bg-foreground text-background"
-                        : "text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    Chats
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("friends")}
-                    className={cn(
-                      "flex-1 rounded-full px-3 py-2 text-[10px] font-mono uppercase tracking-[0.25em] transition-colors",
-                      activeTab === "friends"
-                        ? "bg-foreground text-background"
-                        : "text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    Friends
-                  </button>
-                </div>
-              </div>
+          <div className="grid h-[72dvh] min-h-0 grid-cols-1 overflow-hidden md:h-[min(72vh,760px)] md:grid-cols-[320px_1fr]">
+            <ChatSidebar
+              session={session}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              isMobile={isMobile}
+              showMobileChat={showMobileChat}
+              selectedConversationId={selectedConversationId}
+              conversations={conversationsQuery.data}
+              conversationsLoading={conversationsQuery.isLoading}
+              friends={friendsQuery.data}
+              friendsLoading={friendsQuery.isLoading}
+              friendFilter={friendFilter}
+              setFriendFilter={setFriendFilter}
+              onSelectConversation={handleSelectConversation}
+              onCreateConversation={(participantId) => createDirectMutation.mutate(participantId)}
+              createDirectPending={createDirectMutation.isPending}
+            />
 
-              <div className="flex-1 min-h-0 overflow-y-auto">
-                {activeTab === "chats" ? (
-                  conversationsQuery.isLoading ? (
-                    <div className="p-4 space-y-3">
-                      <div className="h-16 animate-pulse rounded-2xl bg-muted" />
-                      <div className="h-16 animate-pulse rounded-2xl bg-muted" />
-                      <div className="h-16 animate-pulse rounded-2xl bg-muted" />
-                    </div>
-                  ) : conversationsQuery.data?.length ? (
-                    <div className="p-2">
-                      {conversationsQuery.data.map((conversation) => {
-                        const isActive = conversation.id === selectedConversationId;
-                        const label = getConversationLabel(conversation, session.user.id);
-                        const subtitle = getConversationSubtitle(conversation, session.user.id);
-                        const lastMessageText = conversation.lastMessage?.content?.trim()
-                          ? conversation.lastMessage.content
-                          : conversation.lastMessage?.attachmentUrl
-                            ? "Attachment"
-                            : "No messages yet";
-                        const lastMessageAt = formatConversationTime(conversation.lastMessage?.createdAt);
-                        const unread =
-                          conversation.lastMessage &&
-                          new Date(conversation.lastMessage.createdAt).getTime() >
-                            new Date(
-                              conversation.members.find(
-                                (member) => String(member.userId) === String(session.user.id),
-                              )?.lastReadAt ?? 0,
-                            ).getTime();
-
-                        return (
-                          <button
-                            key={conversation.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedConversationId(conversation.id);
-                              if (isMobile) setShowMobileChat(true);
-                            }}
-                            className={cn(
-                              "flex w-full items-start gap-3 rounded-2xl px-3 py-3 text-left transition-colors",
-                              isActive ? "bg-foreground text-background" : "hover:bg-muted",
-                            )}
-                          >
-                            <Avatar className="mt-0.5 size-10 shrink-0 border border-border/80">
-                              <AvatarImage src={conversation.members.find((member) => String(member.userId) !== String(session.user.id))?.user.avatar ?? undefined} />
-                              <AvatarFallback className={isActive ? "bg-background text-foreground" : ""}>
-                                {avatarFallback(
-                                  conversation.members.find(
-                                    (member) => String(member.userId) !== String(session.user.id),
-                                  )?.user,
-                                )}
-                              </AvatarFallback>
-                            </Avatar>
-
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-start justify-between gap-2">
-                                <div>
-                                  <p className="truncate text-sm font-semibold">{label}</p>
-                                  <p
-                                    className={cn(
-                                      "truncate text-[11px] uppercase tracking-[0.2em]",
-                                      isActive ? "text-background/70" : "text-muted-foreground",
-                                    )}
-                                  >
-                                    {subtitle}
-                                  </p>
-                                </div>
-                                <div className="flex flex-col items-end gap-1">
-                                  {lastMessageAt ? (
-                                    <span
-                                      className={cn(
-                                        "text-[10px] uppercase tracking-[0.2em]",
-                                        isActive ? "text-background/60" : "text-muted-foreground",
-                                      )}
-                                    >
-                                      {lastMessageAt}
-                                    </span>
-                                  ) : null}
-                                  {unread ? (
-                                    <span
-                                      className={cn(
-                                        "size-2 rounded-full",
-                                        isActive ? "bg-background" : "bg-foreground",
-                                      )}
-                                    />
-                                  ) : null}
-                                </div>
-                              </div>
-                              <p
-                                className={cn(
-                                  "mt-2 line-clamp-2 text-sm",
-                                  isActive ? "text-background/80" : "text-muted-foreground",
-                                )}
-                              >
-                                {lastMessageText}
-                              </p>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="flex h-full flex-col items-center justify-center px-6 py-12 text-center">
-                      <div className="mb-4 flex size-14 items-center justify-center rounded-full border border-border bg-muted">
-                        <PencilSquareIcon className="size-6 text-muted-foreground" />
-                      </div>
-                      <h3 className="text-base font-semibold">No conversations yet</h3>
-                      <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-                        Open the Friends tab to start a direct chat.
-                      </p>
-                    </div>
-                  )
-                ) : (
-                  <div className="flex h-full flex-col">
-                    <div className="border-b border-border/70 p-4">
-                      <div className="relative">
-                        <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                          value={friendFilter}
-                          onChange={(event) => setFriendFilter(event.target.value)}
-                          placeholder="Search your friends..."
-                          className="h-11 rounded-full pl-10 text-sm"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex-1 min-h-0 overflow-y-auto">
-                      {friendsQuery.isLoading ? (
-                        <div className="p-4 space-y-3">
-                          <div className="h-14 animate-pulse rounded-2xl bg-muted" />
-                          <div className="h-14 animate-pulse rounded-2xl bg-muted" />
-                          <div className="h-14 animate-pulse rounded-2xl bg-muted" />
-                        </div>
-                      ) : friendsQuery.data?.length ? (
-                        <div className="p-2">
-                          {friendsQuery.data
-                            .filter((friend) => {
-                              const query = friendFilter.trim().toLowerCase();
-                              if (!query) return true;
-                              return (
-                                friend.name.toLowerCase().includes(query) ||
-                                friend.email.toLowerCase().includes(query)
-                              );
-                            })
-                            .map((friend) => (
-                              <button
-                                key={friend.id}
-                                type="button"
-                                onClick={() => createDirectMutation.mutate(friend.id)}
-                                disabled={createDirectMutation.isPending}
-                                className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors hover:bg-muted disabled:opacity-60"
-                              >
-                                <Avatar className="size-10 border border-border/80">
-                                  <AvatarImage src={friend.avatar ?? undefined} />
-                                  <AvatarFallback>
-                                    {avatarFallback(friend)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className="min-w-0 flex-1">
-                                  <p className="truncate text-sm font-semibold">{friend.name}</p>
-                                  <p className="truncate text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                                    {friend.bio || friend.email}
-                                  </p>
-                                </div>
-                                <span className="rounded-full border border-border px-3 py-1 text-[10px] uppercase tracking-[0.25em]">
-                                  Message
-                                </span>
-                              </button>
-                            ))}
-                          {friendsQuery.data.filter((friend) => {
-                            const query = friendFilter.trim().toLowerCase();
-                            if (!query) return true;
-                            return (
-                              friend.name.toLowerCase().includes(query) ||
-                              friend.email.toLowerCase().includes(query)
-                            );
-                          }).length === 0 ? (
-                            <div className="flex flex-col items-center justify-center px-6 py-12 text-center">
-                              <div className="mb-4 flex size-14 items-center justify-center rounded-full border border-border bg-muted">
-                                <MagnifyingGlassIcon className="size-6 text-muted-foreground" />
-                              </div>
-                              <h3 className="text-base font-semibold">No matching friends</h3>
-                              <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-                                Try another name or switch back to chats.
-                              </p>
-                            </div>
-                          ) : null}
-                        </div>
-                      ) : (
-                        <div className="flex h-full flex-col items-center justify-center px-6 py-12 text-center">
-                          <div className="mb-4 flex size-14 items-center justify-center rounded-full border border-border bg-muted">
-                            <PlusIcon className="size-6 text-muted-foreground" />
-                          </div>
-                          <h3 className="text-base font-semibold">No friends yet</h3>
-                          <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-                            Add some friends first, then come back here to start a direct chat.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </aside>
-
-            <section className={cn(
-              "flex h-full min-h-0 flex-col overflow-hidden bg-[radial-gradient(circle_at_top,rgba(0,0,0,0.03),transparent_40%)]",
-              isMobile && !showMobileChat && "hidden"
-            )}>
-              {activeConversation ? (
-                <>
-                  <div className="shrink-0 flex items-center justify-between border-b border-border/70 px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      {isMobile && (
-                        <button
-                          type="button"
-                          onClick={() => setShowMobileChat(false)}
-                          className="flex shrink-0 items-center justify-center rounded-full p-1.5 text-muted-foreground hover:bg-muted -ml-1"
-                        >
-                          <ArrowLeftIcon className="size-5" />
-                        </button>
-                      )}
-                      <Avatar className="size-10 border border-border/80">
-                        <AvatarImage
-                          src={
-                            activeConversation.members.find(
-                              (member) => String(member.userId) !== String(session.user.id),
-                            )?.user.avatar ?? undefined
-                          }
-                        />
-                        <AvatarFallback>
-                          {avatarFallback(
-                            activeConversation.members.find(
-                              (member) => String(member.userId) !== String(session.user.id),
-                            )?.user,
-                          )}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold">
-                          {getConversationLabel(activeConversation, session.user.id)}
-                        </p>
-                        <p className="truncate text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                          {getConversationSubtitle(activeConversation, session.user.id)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={startCall}
-                        aria-label="Start video call"
-                      >
-                        <VideoCameraIcon className="size-4" />
-                      </Button>
-                      <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                        <CircleStackIcon className="size-4" />
-                        {socketState}
-                      </div>
-                    </div>
-                  </div>
-
-                  {incomingCall ? (
-                    <div className="border-b border-border/70 bg-foreground/5 px-4 py-3">
-                      <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-background/80 p-3">
-                        <div>
-                          <p className="text-sm font-semibold">Incoming video call</p>
-                          <p className="text-xs text-muted-foreground">A call is waiting for your reply.</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button type="button" variant="outline" size="sm" onClick={rejectCall}>
-                            Decline
-                          </Button>
-                          <Button type="button" size="sm" onClick={acceptCall}>
-                            Accept
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {callState === "calling" || callState === "connected" ? (
-                    <div className="border-b border-border/70 bg-black/90 p-4">
-                      <div className="mb-3 flex items-center justify-between gap-3 text-sm text-white/80">
-                        <span>{callState === "connected" ? "Call in progress" : "Calling…"}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="rounded-full border border-white/15 px-2 py-1 text-[10px] uppercase tracking-[0.25em]">
-                            {callState === "connected" ? "Live" : "Connecting"}
-                          </span>
-                          <Button className="rounded-full border h-6 border-white/15 px-2 text-[10px] uppercase tracking-[0.25em]" type="button" variant="destructive" size="sm" onClick={endCall}>
-                            End call
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="grid gap-3 md:grid-cols-2">
-                        <div className="flex h-48 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black/80 text-center text-sm text-white/70">
-                          {localVideoStream ? (
-                            <video ref={localVideoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
-                          ) : (
-                            <div className="px-4">
-                              <p className="font-medium text-white">Your camera</p>
-                              <p className="mt-1 text-xs text-white/60">Permission may be blocked or unavailable.</p>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex h-48 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black/80 text-center text-sm text-white/70">
-                          {remoteVideoStream ? (
-                            <video ref={remoteVideoRef} autoPlay playsInline className="h-full w-full object-cover" />
-                          ) : (
-                            <div className="px-4">
-                              <p className="font-medium text-white">Remote video</p>
-                              <p className="mt-1 text-xs text-white/60">Waiting for the other participant.</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ) : null}
-
-                  <div
-                    ref={scrollRef}
-                    className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 py-4"
-                  >
-                    {messagesQuery.isLoading ? (
-                      <>
-                        <div className="h-16 w-3/4 animate-pulse rounded-2xl bg-muted" />
-                        <div className="ml-auto h-16 w-2/3 animate-pulse rounded-2xl bg-muted" />
-                        <div className="h-16 w-1/2 animate-pulse rounded-2xl bg-muted" />
-                      </>
-                    ) : activeMessages.length ? (
-                      activeMessages.map((message) => {
-                        const mine = String(message.senderId) === String(session.user.id);
-                        return (
-                          <div
-                            key={message.id}
-                            className={cn("flex", mine ? "justify-end" : "justify-start")}
-                          >
-                            <div
-                              className={cn(
-                                "max-w-[82%] rounded-[1.35rem] px-4 py-3 text-sm leading-relaxed",
-                                mine
-                                  ? "bg-foreground text-background"
-                                  : "bg-muted text-foreground",
-                              )}
-                            >
-                              {!mine ? (
-                                <p className="mb-1 text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
-                                  {message.sender?.name ?? "Member"}
-                                </p>
-                              ) : null}
-                              {message.type === "TEXT" ? (
-                                <p className="whitespace-pre-wrap">{message.content}</p>
-                              ) : message.attachmentUrl ? (
-                                <a
-                                  href={message.attachmentUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="underline underline-offset-4"
-                                >
-                                  Open attachment
-                                </a>
-                              ) : (
-                                <p>{message.content ?? "Message"}</p>
-                              )}
-                              <p
-                                className={cn(
-                                  "mt-2 text-[10px] uppercase tracking-[0.2em]",
-                                  mine ? "text-background/70" : "text-muted-foreground",
-                                )}
-                              >
-                                {formatTime(message.createdAt)}
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div className="flex h-full flex-col items-center justify-center text-center">
-                        <div className="mb-4 flex size-14 items-center justify-center rounded-full border border-border bg-muted">
-                          <ChatBubbleLeftRightIcon className="size-6 text-muted-foreground" />
-                        </div>
-                        <h3 className="text-base font-semibold">Start the conversation</h3>
-                        <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-                          Send the first message to open up this thread.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  <form
-                    className="shrink-0 border-t border-border/70 p-4"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      if (sendMessageMutation.isPending) return;
-                      const content = messageDraft.trim();
-                      if (!content) return;
-                      sendMessageMutation.mutate(content);
-                    }}
-                  >
-                    <div className="rounded-[1.25rem] border border-border bg-background p-3 shadow-inner">
-                      <Textarea
-                        value={messageDraft}
-                        onChange={(event) => {
-                          if (sendMessageMutation.isPending) return;
-                          setMessageDraft(event.target.value);
-                        }}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" && !event.shiftKey) {
-                            event.preventDefault();
-                            const content = messageDraft.trim();
-                            if (!sendMessageMutation.isPending && content) {
-                              sendMessageMutation.mutate(content);
-                            }
-                          }
-                        }}
-                        placeholder="Write a message..."
-                        rows={3}
-                        className="max-h-32 min-h-16 resize-none overflow-y-auto border-0 bg-transparent px-0 py-0 shadow-none focus-visible:ring-0"
-                      />
-                      <div className="mt-3 flex items-center justify-between gap-3">
-                        <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
-                          Enter to send
-                        </p>
-                        <Button
-                          type="submit"
-                          className="rounded-full px-4"
-                          disabled={sendMessageMutation.isPending || !messageDraft.trim()}
-                        >
-                          <PaperAirplaneIcon className="size-4" />
-                          Send
-                        </Button>
-                      </div>
-                    </div>
-                  </form>
-                </>
-              ) : (
-                <div className="flex h-full items-center justify-center p-8 text-center">
-                  <div>
-                    <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full border border-border bg-muted">
-                      <ChatBubbleLeftRightIcon className="size-7 text-muted-foreground" />
-                    </div>
-                    <h3 className="text-lg font-semibold">Select a conversation</h3>
-                    <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-                      Pick a thread from the left to start messaging.
-                    </p>
-                  </div>
-                </div>
+            <section
+              className={cn(
+                "flex h-full min-h-0 flex-col overflow-hidden bg-[radial-gradient(circle_at_top,rgba(0,0,0,0.03),transparent_40%)]",
+                isMobile && !showMobileChat && "hidden",
               )}
+            >
+              <ChatThread
+                session={session}
+                activeConversation={activeConversation}
+                isMobile={isMobile}
+                onBack={() => setShowMobileChat(false)}
+                socketState={socketState}
+                incomingCall={incomingCall}
+                callState={callState}
+                localVideoStream={localVideoStream}
+                remoteVideoStream={remoteVideoStream}
+                startCall={startCall}
+                acceptCall={acceptCall}
+                rejectCall={rejectCall}
+                endCall={endCall}
+                messagesLoading={messagesQuery.isLoading}
+                activeMessages={activeMessages}
+                messageDraft={messageDraft}
+                setMessageDraft={setMessageDraft}
+                onSendMessage={(content) => sendMessageMutation.mutate(content)}
+                sendMessagePending={sendMessageMutation.isPending}
+                scrollRef={scrollRef}
+                localVideoRef={localVideoRef}
+                remoteVideoRef={remoteVideoRef}
+              />
             </section>
           </div>
         </div>
