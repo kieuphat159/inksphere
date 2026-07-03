@@ -21,4 +21,8 @@ export class SendMessageDto {
   @IsOptional()
   @IsObject()
   metadata?: Record<string, any>;
+
+  @IsOptional()
+  @IsString()
+  tempId?: string;
 }

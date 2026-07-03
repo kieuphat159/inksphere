@@ -4,17 +4,17 @@ import {
   OnGatewayConnection,
   OnGatewayDisconnect,
   SubscribeMessage,
-  WsException,
   WebSocketGateway,
   WebSocketServer,
+  WsException,
 } from '@nestjs/websockets';
 import { JwtService } from '@nestjs/jwt';
 import { Server, Socket } from 'socket.io';
+import { AuthJwtPayload } from 'src/auth/types/auth.jwtPayload';
 import { ChatService } from './chat.service';
-import { SendMessageDto } from './dto/send-message.dto/send-message.dto';
 import { JoinConversationDto } from './dto/join-conversation.dto';
 import { MarkReadDto } from './dto/mark-read.dto';
-import { AuthJwtPayload } from 'src/auth/types/auth.jwtPayload';
+import { SendMessageDto } from './dto/send-message.dto/send-message.dto';
 
 type AuthedSocket = Socket & {
   data: {
@@ -92,15 +92,32 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() body: SendMessageDto,
   ) {
     const user = this.requireUser(client);
-    const result = await this.chatService.sendMessage(user.id, body.conversationId, body);
-    const participants = await this.chatService.getConversationMembers(body.conversationId);
+    const member = await this.chatService.ensureConversationMember(body.conversationId, user.id);
 
-    this.server.to(this.conversationRoom(body.conversationId)).emit('message:new', result.message);
-    this.broadcastConversationUpdated(body.conversationId, participants.map((participant) => participant.userId));
+    this.chatService
+      .sendMessage(user.id, body.conversationId, body, member)
+      .then(async (result) => {
+        this.server.to(this.conversationRoom(body.conversationId)).emit('message:new', {
+          ...result.message,
+          tempId: body.tempId,
+        });
+
+        const participants = await this.chatService.getConversationMembers(body.conversationId);
+        this.broadcastConversationUpdated(body.conversationId, participants.map((p) => p.userId));
+      })
+      .catch((error) => {
+        client.emit('message:error', {
+          tempId: body.tempId,
+          conversationId: body.conversationId,
+          error: error?.message ?? 'Failed to send message',
+        });
+      });
 
     return {
-      event: 'message:sent',
-      data: result.message,
+      ok: true,
+      tempId: body.tempId,
+      conversationId: body.conversationId,
+      queuedAt: new Date().toISOString(),
     };
   }
 

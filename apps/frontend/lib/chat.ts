@@ -24,6 +24,8 @@ export type ChatMessage = {
   createdAt: string;
   updatedAt: string;
   sender?: ChatUser;
+  tempId?: string;
+  status?: "sending" | "sent" | "failed";
 };
 
 export type ChatConversationMember = {

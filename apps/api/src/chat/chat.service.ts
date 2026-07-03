@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { MessageType, ConversationType, ConversationMemberRole } from '@prisma/client';
+import { MessageType, ConversationType, ConversationMemberRole, ConversationMember } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateGroupConversationDto } from './dto/create-group-conversation.dto';
 
@@ -227,8 +227,13 @@ export class ChatService {
     });
   }
 
-  async sendMessage(userId: number, conversationId: number, data: { content?: string; type?: MessageType; attachmentUrl?: string; metadata?: any }) {
-    const member = await this.ensureConversationMember(conversationId, userId);
+  async sendMessage(
+    userId: number,
+    conversationId: number,
+    data: { content?: string; type?: MessageType; attachmentUrl?: string; metadata?: any },
+    member?: ConversationMember,
+  ) {
+    const conversationMember = member ?? await this.ensureConversationMember(conversationId, userId);
     this.validateMessagePayload(data);
 
     const message = await this.prisma.$transaction(async (tx) => {
@@ -279,7 +284,7 @@ export class ChatService {
     return {
       message,
       conversationId,
-      senderMemberRole: member.role,
+      senderMemberRole: conversationMember.role,
     };
   }
 

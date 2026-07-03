@@ -22,6 +22,37 @@ import {
   type ChatCallState,
 } from "./chat-utils";
 
+function MessageStatus({ status }: { status?: "sending" | "sent" | "failed" }) {
+  if (status === "sending") {
+    return (
+      <span className="mt-1 inline-flex items-center gap-1 text-[10px] text-muted-foreground/60">
+        <span className="h-1.5 w-1.5 animate-ping rounded-full bg-foreground/40" />
+        Sending...
+      </span>
+    );
+  }
+  if (status === "failed") {
+    return (
+      <span className="mt-1 inline-flex items-center gap-1 text-[10px] text-red-400">
+        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.96-1-2.732-.5-1.732.833-1.732 1.272-1.732 4.5z" />
+        </svg>
+        Failed
+      </span>
+    );
+  }
+  if (status === "sent") {
+    return (
+      <span className="mt-1 inline-flex items-center gap-0.5 text-[10px] text-muted-foreground/40">
+        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      </span>
+    );
+  }
+  return null;
+}
+
 type Props = {
   session: Session;
   activeConversation: ChatConversation | null;
@@ -41,7 +72,6 @@ type Props = {
   messageDraft: string;
   setMessageDraft: (value: string) => void;
   onSendMessage: (content: string) => void;
-  sendMessagePending: boolean;
   scrollRef: RefObject<HTMLDivElement | null>;
   localVideoRef: RefObject<HTMLVideoElement | null>;
   remoteVideoRef: RefObject<HTMLVideoElement | null>;
@@ -66,7 +96,6 @@ export default function ChatThread({
   messageDraft,
   setMessageDraft,
   onSendMessage,
-  sendMessagePending,
   scrollRef,
   localVideoRef,
   remoteVideoRef,
@@ -88,7 +117,6 @@ export default function ChatThread({
   }
 
   const handleSubmit = () => {
-    if (sendMessagePending) return;
     const content = messageDraft.trim();
     if (!content) return;
     onSendMessage(content);
@@ -182,7 +210,7 @@ export default function ChatThread({
           activeMessages.map((message) => {
             const mine = String(message.senderId) === String(session.user.id);
             return (
-              <div key={message.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
+              <div key={message.tempId ?? message.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
                 <div
                   className={cn(
                     "max-w-[82%] rounded-[1.35rem] px-4 py-3 text-sm leading-relaxed",
@@ -195,7 +223,19 @@ export default function ChatThread({
                     </p>
                   ) : null}
                   {message.type === "TEXT" ? (
-                    <p className="whitespace-pre-wrap">{message.content}</p>
+                    <p
+                      className={cn(
+                        "whitespace-pre-wrap",
+                        message.status === "failed" && "cursor-pointer underline decoration-red-400/50 underline-offset-2",
+                      )}
+                      onClick={() => {
+                        if (message.status === "failed" && message.content) {
+                          onSendMessage(message.content);
+                        }
+                      }}
+                    >
+                      {message.content}
+                    </p>
                   ) : message.attachmentUrl ? (
                     <a
                       href={message.attachmentUrl}
@@ -208,14 +248,10 @@ export default function ChatThread({
                   ) : (
                     <p>{message.content ?? "Message"}</p>
                   )}
-                  <p
-                    className={cn(
-                      "mt-2 text-[10px] uppercase tracking-[0.2em]",
-                      mine ? "text-background/70" : "text-muted-foreground",
-                    )}
-                  >
-                    {formatTime(message.createdAt)}
-                  </p>
+                  <div className={cn("mt-1 flex items-center gap-1.5", mine ? "text-background/70" : "text-muted-foreground")}>
+                    <span className="text-[10px] uppercase tracking-[0.2em]">{formatTime(message.createdAt)}</span>
+                    {mine && <MessageStatus status={message.status} />}
+                  </div>
                 </div>
               </div>
             );
@@ -244,7 +280,6 @@ export default function ChatThread({
           <Textarea
             value={messageDraft}
             onChange={(event) => {
-              if (sendMessagePending) return;
               setMessageDraft(event.target.value);
             }}
             onKeyDown={(event) => {
@@ -261,7 +296,7 @@ export default function ChatThread({
             <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
               Enter to send
             </p>
-            <Button type="submit" className="rounded-full px-4" disabled={sendMessagePending || !messageDraft.trim()}>
+            <Button type="submit" className="rounded-full px-4" disabled={!messageDraft.trim()}>
               <PaperAirplaneIcon className="size-4" />
               Send
             </Button>

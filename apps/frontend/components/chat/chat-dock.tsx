@@ -29,12 +29,51 @@ import {
 } from "./chat-utils";
 
 type SocketMessage = ChatMessage;
+type OutgoingMessage = {
+  content: string;
+  conversationId: number;
+  tempId: string;
+};
 
 type Props = {
   session: Session | null;
 };
 
 type SocketState = "idle" | "connecting" | "connected";
+
+async function waitForSocketConnection(socket: Socket, timeoutMs = 15_000) {
+  if (socket.connected) {
+    return;
+  }
+
+  let lastError: Error | null = null;
+
+  await new Promise<void>((resolve, reject) => {
+    const cleanup = () => {
+      clearTimeout(timer);
+      socket.off("connect", handleConnect);
+      socket.off("connect_error", handleError);
+    };
+
+    const handleConnect = () => {
+      cleanup();
+      resolve();
+    };
+
+    const handleError = (error: Error) => {
+      lastError = error;
+    };
+
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(lastError ?? new Error("Socket connection timeout"));
+    }, timeoutMs);
+
+    socket.on("connect", handleConnect);
+    socket.on("connect_error", handleError);
+    socket.connect();
+  });
+}
 
 export default function ChatDock({ session }: Props) {
   const queryClient = useQueryClient();
@@ -54,6 +93,7 @@ export default function ChatDock({ session }: Props) {
   const [activeTab, setActiveTab] = useState<SidebarTab>("chats");
   const [friendFilter, setFriendFilter] = useState("");
   const [socketState, setSocketState] = useState<SocketState>("idle");
+  const sendingMessagesRef = useRef<Map<string, ChatMessage>>(new Map());
   const [callState, setCallState] = useState<ChatCallState>("idle");
   const [incomingCall, setIncomingCall] = useState<{ conversationId: number; fromUserId: number } | null>(null);
   const [localVideoStream, setLocalVideoStream] = useState<MediaStream | null>(null);
@@ -200,6 +240,13 @@ export default function ChatDock({ session }: Props) {
         token: `Bearer ${session.accessToken}`,
       },
     });
+    const manager = socket.io;
+    const handleReconnectAttempt = () => {
+      setSocketState("connecting");
+    };
+    const handleReconnectFailed = () => {
+      setSocketState("idle");
+    };
 
     socketRef.current = socket;
 
@@ -208,7 +255,7 @@ export default function ChatDock({ session }: Props) {
     });
 
     socket.on("disconnect", () => {
-      setSocketState("idle");
+      setSocketState(socket.active ? "connecting" : "idle");
     });
 
     socket.on("connect_error", (error) => {
@@ -216,16 +263,36 @@ export default function ChatDock({ session }: Props) {
         redirectToSignOut();
         return;
       }
-      setSocketState("idle");
+      setSocketState("connecting");
     });
 
-    socket.on("message:new", (message: SocketMessage) => {
+    manager.on("reconnect_attempt", handleReconnectAttempt);
+
+    manager.on("reconnect_failed", handleReconnectFailed);
+
+    socket.on("message:new", (message: SocketMessage & { tempId?: string }) => {
+      if (message.tempId) {
+        sendingMessagesRef.current.delete(message.tempId);
+      }
+
       queryClient.setQueryData<ChatMessage[]>(
         ["chat", "messages", session.accessToken, message.conversationId],
         (current) => {
-          if (!current) return [message];
-          const exists = current.some((item) => item.id === message.id);
-          return exists ? current : [...current, message];
+          if (!current) return [{ ...message, status: "sent" as const }];
+          const optimisticIndex = message.tempId
+            ? current.findIndex((item) => item.tempId === message.tempId)
+            : -1;
+          if (optimisticIndex >= 0) {
+            return current.map((item) =>
+              item.tempId === message.tempId
+                ? { ...message, status: "sent" as const, tempId: undefined }
+                : item,
+            );
+          }
+          const existsById = current.some((item) => item.id === message.id && message.id > 0);
+          if (existsById) return current;
+
+          return [...current, { ...message, status: "sent" as const }];
         },
       );
 
@@ -238,7 +305,7 @@ export default function ChatDock({ session }: Props) {
             if (conversation.id !== message.conversationId) return conversation;
             return {
               ...conversation,
-              lastMessage: message,
+              lastMessage: { ...message, status: "sent" as const },
               lastMessageId: message.id,
               updatedAt: message.createdAt,
             };
@@ -247,9 +314,6 @@ export default function ChatDock({ session }: Props) {
       );
 
       if (activeConversationRef.current === message.conversationId) {
-        queryClient.invalidateQueries({
-          queryKey: ["chat", "messages", session.accessToken, message.conversationId],
-        });
         queryClient.invalidateQueries({
           queryKey: ["chat", "conversations", session.accessToken],
         });
@@ -260,6 +324,21 @@ export default function ChatDock({ session }: Props) {
       queryClient.invalidateQueries({
         queryKey: ["chat", "conversations", session.accessToken],
       });
+    });
+
+    socket.on("message:error", (payload: { tempId?: string; conversationId: number; error: string }) => {
+      if (payload.tempId) {
+        sendingMessagesRef.current.delete(payload.tempId);
+        queryClient.setQueryData<ChatMessage[]>(
+          ["chat", "messages", session.accessToken, payload.conversationId],
+          (current) => {
+            if (!current) return current;
+            return current.map((msg) =>
+              msg.tempId === payload.tempId ? { ...msg, status: "failed" as const } : msg,
+            );
+          },
+        );
+      }
     });
 
     socket.on("conversation:read", (payload: { conversationId: number; lastReadAt: string }) => {
@@ -340,6 +419,8 @@ export default function ChatDock({ session }: Props) {
 
     return () => {
       socket.removeAllListeners();
+      manager.off("reconnect_attempt", handleReconnectAttempt);
+      manager.off("reconnect_failed", handleReconnectFailed);
       socket.disconnect();
       socketRef.current = null;
       setSocketState("idle");
@@ -382,65 +463,126 @@ export default function ChatDock({ session }: Props) {
       : 0;
 
   const sendMessageMutation = useMutation({
-    mutationFn: async (content: string) => {
+    mutationFn: async ({ content, conversationId, tempId }: OutgoingMessage) => {
       if (!session?.accessToken) throw new Error("Missing session");
-      if (!effectiveSelectedConversationId) throw new Error("Select a conversation first");
-      if (!socketRef.current || socketState !== "connected") {
-        throw new Error("Socket disconnected");
+      if (!socketRef.current) {
+        throw new Error("Socket unavailable");
       }
 
-      return new Promise<SocketMessage>((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error("Message timeout")), 10_000);
+      if (!socketRef.current.connected) {
+        setSocketState("connecting");
+      }
+      await waitForSocketConnection(socketRef.current);
+      setSocketState("connected");
+
+      return new Promise<{ tempId: string }>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error("Message acknowledgement timeout")), 15_000);
 
         socketRef.current?.emit(
           "message:send",
           {
-            conversationId: effectiveSelectedConversationId,
+            conversationId,
             content,
             type: "TEXT",
+            tempId,
           },
-          (response: { data?: SocketMessage; message?: string }) => {
+          (response?: { ok?: boolean; message?: string; error?: string }) => {
             clearTimeout(timer);
-            if (response?.data) {
-              resolve(response.data);
+            if (response?.ok) {
+              resolve({ tempId });
               return;
             }
-            if (response && "id" in response) {
-              resolve(response as SocketMessage);
-              return;
-            }
-            reject(new Error(response?.message || "Failed to send message"));
+            reject(new Error(response?.error || response?.message || "Failed to queue message"));
           },
         );
       });
     },
-    onMutate: async (content) => {
+    onMutate: async ({ content, conversationId, tempId }) => {
       const nextDraft = content.trim();
       if (nextDraft) {
         setMessageDraft("");
       }
 
-      return { previousDraft: content };
+      const tempMessage: ChatMessage = {
+        id: -Date.now(),
+        tempId,
+        conversationId,
+        senderId: Number(session?.user?.id ?? 0),
+        type: "TEXT",
+        content: nextDraft,
+        status: "sending",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        sender: {
+          id: Number(session?.user?.id ?? 0),
+          name: session?.user?.name ?? "You",
+          avatar: session?.user?.avatar ?? null,
+        },
+      };
+
+      sendingMessagesRef.current.set(tempId, tempMessage);
+
+      queryClient.setQueryData<ChatMessage[]>(
+        ["chat", "messages", session?.accessToken, conversationId],
+        (current) => {
+          if (!current) return [tempMessage];
+          if (current.some((message) => message.tempId === tempId)) return current;
+          return [...current, tempMessage];
+        },
+      );
+
+      queryClient.setQueryData<ChatConversation[]>(
+        ["chat", "conversations", session?.accessToken],
+        (current) => {
+          if (!current) return current;
+          return current.map((conversation) => {
+            if (conversation.id !== conversationId) return conversation;
+            return {
+              ...conversation,
+              lastMessage: tempMessage,
+              updatedAt: tempMessage.createdAt,
+            };
+          });
+        },
+      );
+
+      return { tempId, conversationId };
     },
-    onError: (_error, _content, context) => {
-      if (shouldSignOutFromError(_error)) {
+    onError: (error, _variables, context) => {
+      if (shouldSignOutFromError(error)) {
         redirectToSignOut();
         return;
       }
-      if (context?.previousDraft) {
-        setMessageDraft(context.previousDraft);
-      }
-    },
-    onSuccess: async () => {
-      if (effectiveSelectedConversationId && session?.accessToken) {
-        await Promise.all([
-          queryClient.invalidateQueries({
-            queryKey: ["chat", "messages", session.accessToken, effectiveSelectedConversationId],
-          }),
-          queryClient.invalidateQueries({
-            queryKey: ["chat", "conversations", session.accessToken],
-          }),
-        ]);
+
+      if (context?.tempId) {
+        const tempId = context.tempId;
+        sendingMessagesRef.current.delete(tempId);
+        queryClient.setQueryData<ChatMessage[]>(
+          ["chat", "messages", session?.accessToken, context.conversationId],
+          (current) => {
+            if (!current) return current;
+            return current.map((msg) =>
+              msg.tempId === tempId ? { ...msg, status: "failed" as const } : msg,
+            );
+          },
+        );
+
+        queryClient.setQueryData<ChatConversation[]>(
+          ["chat", "conversations", session?.accessToken],
+          (current) => {
+            if (!current) return current;
+            return current.map((conversation) => {
+              if (conversation.id !== context.conversationId || conversation.lastMessage?.tempId !== tempId) {
+                return conversation;
+              }
+
+              return {
+                ...conversation,
+                lastMessage: { ...conversation.lastMessage, status: "failed" as const },
+              };
+            });
+          },
+        );
       }
     },
   });
@@ -655,8 +797,16 @@ export default function ChatDock({ session }: Props) {
                 activeMessages={activeMessages}
                 messageDraft={messageDraft}
                 setMessageDraft={setMessageDraft}
-                onSendMessage={(content) => sendMessageMutation.mutate(content)}
-                sendMessagePending={sendMessageMutation.isPending}
+                onSendMessage={(content) => {
+                  if (!effectiveSelectedConversationId) {
+                    return;
+                  }
+                  sendMessageMutation.mutate({
+                    content,
+                    conversationId: effectiveSelectedConversationId,
+                    tempId: crypto.randomUUID(),
+                  });
+                }}
                 scrollRef={scrollRef}
                 localVideoRef={localVideoRef}
                 remoteVideoRef={remoteVideoRef}
