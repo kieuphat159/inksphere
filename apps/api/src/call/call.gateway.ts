@@ -20,6 +20,11 @@ type AuthedSocket = Socket & {
   };
 };
 
+function logWSTiming(event: string, durationMs: number, meta?: Record<string, unknown>): void {
+  // eslint-disable-next-line no-console
+  console.log(`[⏱ WS][${event}] ${durationMs}ms${meta ? ` | ${JSON.stringify(meta)}` : ''}`);
+}
+
 @WebSocketGateway({
   cors: {
     origin: process.env.FRONTEND_URL ?? 'http://localhost:3000',
@@ -36,6 +41,9 @@ export class CallGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {}
 
   async handleConnection(client: AuthedSocket) {
+    const start = Date.now();
+    let connected = false;
+
     const token = this.extractToken(client);
 
     if (!token) {
@@ -47,8 +55,11 @@ export class CallGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const payload = await this.jwtService.verifyAsync<AuthJwtPayload>(token);
       client.data.user = { id: payload.sub };
       client.join(this.userRoom(payload.sub));
+      connected = true;
     } catch {
       client.disconnect(true);
+    } finally {
+      logWSTiming('connection', Date.now() - start, { connected, userId: client.data.user?.id });
     }
   }
 
@@ -63,6 +74,7 @@ export class CallGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: AuthedSocket,
     @MessageBody() body: { conversationId: number; targetUserId: number },
   ) {
+    const start = Date.now();
     const user = this.requireUser(client);
     const canInitiate = await this.callService.canInitiateCall(
       body.conversationId,
@@ -71,6 +83,7 @@ export class CallGateway implements OnGatewayConnection, OnGatewayDisconnect {
     );
 
     if (!canInitiate) {
+      logWSTiming('call:invite', Date.now() - start, { result: 'failed', conversationId: body.conversationId });
       return { event: 'call:invite:failed', data: { message: 'Unable to start call' } };
     }
 
@@ -80,6 +93,7 @@ export class CallGateway implements OnGatewayConnection, OnGatewayDisconnect {
       fromUserName: user.id,
     });
 
+    logWSTiming('call:invite', Date.now() - start, { result: 'sent', conversationId: body.conversationId });
     return { event: 'call:invite:sent', data: { targetUserId: body.targetUserId } };
   }
 
@@ -88,12 +102,14 @@ export class CallGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: AuthedSocket,
     @MessageBody() body: { conversationId: number; fromUserId: number },
   ) {
+    const start = Date.now();
     const user = this.requireUser(client);
     this.server.to(this.userRoom(body.fromUserId)).emit('call:accepted', {
       conversationId: body.conversationId,
       toUserId: user.id,
     });
 
+    logWSTiming('call:accept', Date.now() - start, { conversationId: body.conversationId });
     return { event: 'call:accepted:ack', data: { conversationId: body.conversationId } };
   }
 
@@ -103,10 +119,12 @@ export class CallGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() body: { targetUserId: number; offer: unknown },
   ) {
     this.requireUser(client);
+    const start = Date.now();
     this.server.to(this.userRoom(body.targetUserId)).emit('call:offer', {
       fromUserId: client.data.user!.id,
       offer: body.offer,
     });
+    logWSTiming('call:offer', Date.now() - start, { targetUserId: body.targetUserId });
   }
 
   @SubscribeMessage('call:answer')
@@ -115,10 +133,12 @@ export class CallGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() body: { targetUserId: number; answer: unknown },
   ) {
     this.requireUser(client);
+    const start = Date.now();
     this.server.to(this.userRoom(body.targetUserId)).emit('call:answer', {
       fromUserId: client.data.user!.id,
       answer: body.answer,
     });
+    logWSTiming('call:answer', Date.now() - start, { targetUserId: body.targetUserId });
   }
 
   @SubscribeMessage('call:reject')
@@ -126,12 +146,14 @@ export class CallGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: AuthedSocket,
     @MessageBody() body: { conversationId: number; fromUserId: number },
   ) {
+    const start = Date.now();
     const user = this.requireUser(client);
     this.server.to(this.userRoom(body.fromUserId)).emit('call:rejected', {
       conversationId: body.conversationId,
       fromUserId: user.id,
     });
 
+    logWSTiming('call:reject', Date.now() - start, { conversationId: body.conversationId });
     return { event: 'call:rejected:ack', data: { conversationId: body.conversationId } };
   }
 
@@ -140,11 +162,13 @@ export class CallGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: AuthedSocket,
     @MessageBody() body: { targetUserId: number; candidate: unknown },
   ) {
+    const start = Date.now();
     const user = this.requireUser(client);
     this.server.to(this.userRoom(body.targetUserId)).emit('call:ice-candidate', {
       fromUserId: user.id,
       candidate: body.candidate,
     });
+    logWSTiming('call:ice-candidate', Date.now() - start);
   }
 
   @SubscribeMessage('call:hangup')
@@ -160,8 +184,8 @@ export class CallGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   private extractToken(client: AuthedSocket) {
-    const authToken = client.handshake.auth?.token;
-    const headerToken = client.handshake.headers.authorization;
+    const authToken = client.handshake.auth?.token as string | undefined;
+    const headerToken = client.handshake.headers.authorization as string | undefined;
     const token = authToken ?? headerToken;
 
     if (!token) {

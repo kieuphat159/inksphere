@@ -57,26 +57,31 @@ export class AuthService {
   }
 
   async validateJwtUser(userId: number) {
-    const cachedUser = this.jwtUserCache.get(userId);
-    if (cachedUser && cachedUser.expiresAt > Date.now()) {
-      return cachedUser.value;
-    }
+    const __start = Date.now();
+    try {
+      const cachedUser = this.jwtUserCache.get(userId);
+      if (cachedUser && cachedUser.expiresAt > Date.now()) {
+        return cachedUser.value;
+      }
 
-    const user = await this.prisma.user.findUnique({
-      where: {
-        id: userId,
-      },
-    });
+      const user = await this.prisma.user.findUnique({
+        where: {
+          id: userId,
+        },
+      });
 
-    if (!user) {
-      throw new UnauthorizedException('User not found');
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
+      const currentUser = { id: user.id };
+      this.jwtUserCache.set(userId, {
+        value: currentUser,
+        expiresAt: Date.now() + this.jwtUserCacheTtlMs,
+      });
+      return currentUser;
+    } finally {
+      console.log(`[⏱ Service][AuthService.validateJwtUser] ${Date.now() - __start}ms`);
     }
-    const currentUser = { id: user.id };
-    this.jwtUserCache.set(userId, {
-      value: currentUser,
-      expiresAt: Date.now() + this.jwtUserCacheTtlMs,
-    });
-    return currentUser;
   }
 
   async validateGoogleUser(googleUser: CreateUserInput) {

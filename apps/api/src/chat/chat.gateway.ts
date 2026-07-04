@@ -26,6 +26,11 @@ type AuthedSocket = Socket & {
   };
 };
 
+function logWSTiming(event: string, durationMs: number, meta?: Record<string, unknown>): void {
+  // eslint-disable-next-line no-console
+  console.log(`[⏱ WS][${event}] ${durationMs}ms${meta ? ` | ${JSON.stringify(meta)}` : ''}`);
+}
+
 @WebSocketGateway({
   cors: {
     origin: process.env.FRONTEND_URL ?? 'http://localhost:3000',
@@ -52,6 +57,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {}
 
   async handleConnection(client: AuthedSocket) {
+    const start = Date.now();
+    let connected = false;
+
     const token = this.extractToken(client);
 
     if (!token) {
@@ -70,8 +78,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       client.data.user = user;
       client.join(this.userRoom(user.id));
+      connected = true;
     } catch {
       client.disconnect(true);
+    } finally {
+      logWSTiming('chat:connection', Date.now() - start, { connected, userId: client.data.user?.id });
     }
   }
 
@@ -86,6 +97,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: AuthedSocket,
     @MessageBody() body: JoinConversationDto,
   ) {
+    const start = Date.now();
     this.requireUser(client);
     await this.chatService.ensureConversationMember(
       body.conversationId,
@@ -93,6 +105,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     );
     await client.join(this.conversationRoom(body.conversationId));
 
+    logWSTiming('chat:conversation:join', Date.now() - start, { conversationId: body.conversationId });
     return {
       event: 'conversation:joined',
       data: {
@@ -122,6 +135,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       };
     }
 
+    const sendStart = Date.now();
     const member = await this.chatService.ensureConversationMember(
       body.conversationId,
       user.id,
@@ -138,6 +152,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
           ),
         )
         .then(async (result) => {
+          const queueDuration = Date.now() - sendStart;
           this.server
             .to(this.conversationRoom(body.conversationId))
             .emit('message:new', {
@@ -152,6 +167,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
             body.conversationId,
             participants.map((p) => p.userId),
           );
+          logWSTiming('chat:message:send:complete', Date.now() - sendStart, { queued: queueDuration, conversationId: body.conversationId });
         })
         .catch((error) => {
           client.emit('message:error', {
@@ -185,6 +201,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: AuthedSocket,
     @MessageBody() body: MarkReadDto,
   ) {
+    const start = Date.now();
     const user = this.requireUser(client);
     if (!body.conversationId) {
       throw new WsException('conversationId is required');
@@ -199,6 +216,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(this.userRoom(user.id)).emit('conversation:read', {
       conversationId: body.conversationId,
       lastReadAt: member.lastReadAt,
+    });
+
+    logWSTiming('chatNarrowing', Date.now() - start, {
+      conversationId: body.conversationId,
     });
 
     return {
@@ -230,8 +251,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   private extractToken(client: AuthedSocket) {
-    const authToken = client.handshake.auth?.token;
-    const headerToken = client.handshake.headers.authorization;
+    const authToken = client.handshake.auth?.token as string | undefined;
+    const headerToken = client.handshake.headers.authorization as string | undefined;
     const token = authToken ?? headerToken;
 
     if (!token) {

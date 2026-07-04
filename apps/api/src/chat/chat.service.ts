@@ -11,6 +11,7 @@ import {
   ConversationMember,
 } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { logCheckpoint } from 'src/common/timing.context';
 import { CreateGroupConversationDto } from './dto/create-group-conversation.dto';
 
 type MessageListOptions = {
@@ -279,6 +280,8 @@ export class ChatService {
     },
     member?: ConversationMember,
   ) {
+    const __start = Date.now();
+    logCheckpoint('chat-service:sendMessage-start');
     const conversationMember =
       member ?? (await this.ensureConversationMember(conversationId, userId));
     this.validateMessagePayload(data);
@@ -334,6 +337,7 @@ export class ChatService {
       lastReadAt,
     });
 
+    console.log(`[⏱ ChatService.sendMessage] total: ${Date.now() - __start}ms | convId: ${conversationId}`);
     return {
       message,
       conversationId,
