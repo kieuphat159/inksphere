@@ -20,7 +20,7 @@ type Props = {
 }
 
 const AddComment = (props: Props) => {
-    const [state, action] = useActionState(saveComment, undefined);
+    const [state, action, isPending] = useActionState(saveComment, undefined);
     useEffect(() => {
     if (!state?.message) return;
 
@@ -40,7 +40,7 @@ const AddComment = (props: Props) => {
     return (
         <Dialog open={state?.open}> 
             <DialogTrigger asChild>
-                <Button variant="outline" className="w-fit my-2 font-mono text-[11px] uppercase tracking-widest py-5 border-border hover:border-foreground hover:bg-foreground hover:text-background transition-all duration-200">
+                <Button variant="outline" className="cursor-pointer w-fit my-2 font-mono text-[11px] uppercase tracking-widest py-5 border-border hover:border-foreground hover:bg-foreground hover:text-background transition-all duration-200">
                     Leave your comment
                 </Button>
             </DialogTrigger>
@@ -66,7 +66,7 @@ const AddComment = (props: Props) => {
                             </p> 
                         )}
                     </div>
-                    <Button type="submit" className="font-mono text-[11px] uppercase tracking-widest py-4 bg-foreground text-background hover:bg-foreground/90 transition-colors duration-200">
+                    <Button type="submit" disabled={isPending} className="cursor-pointer font-mono text-[11px] uppercase tracking-widest py-4 bg-foreground text-background hover:bg-foreground/90 transition-colors duration-200">
                         Submit Comment
                     </Button>
                 </form>
