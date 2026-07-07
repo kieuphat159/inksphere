@@ -9,6 +9,15 @@ export const GET_POST = gql`
             thumbnail
             content
             createdAt
+            author {
+                id
+                name
+                avatar
+            }
+            _count {
+                comments
+                likes
+            }
         }
         postsCount
     }

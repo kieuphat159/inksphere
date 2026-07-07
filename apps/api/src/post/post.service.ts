@@ -20,7 +20,16 @@ export class PostService {
       take,
       orderBy: {
         createdAt: 'desc'
-      }
+      },
+      include: {
+        author: true,
+        _count: {
+          select: {
+            comments: true,
+            likes: true,
+          },
+        },
+      },
     });
   }
 

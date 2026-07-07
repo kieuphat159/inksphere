@@ -27,7 +27,7 @@ export const fetchPosts = async ({
     const { skip, take } = transformTakeSkip({ page, pageSize });
     const data = await fetchGraphQL(print(GET_POST), { skip, take });
     // console.log({ data });
-    return { posts: data.posts as Post[], totalPosts: data.postsCount };
+    return { posts: (data?.posts ?? []) as Post[], totalPosts: data?.postsCount ?? 0 };
 }
 
 export const fetchPostById = async (id: number) => {

@@ -148,11 +148,13 @@ export default function PostCard({
                             </p>
                         </div>
                     </div>
-                    <FriendButton
-                        targetUserId={author?.id ?? 0}
-                        currentUserId={currentUser?.id ? Number(currentUser.id) : undefined}
-                        compact
-                    />
+                    {author?.id ? (
+                        <FriendButton
+                            targetUserId={author.id}
+                            currentUserId={currentUser?.id ? Number(currentUser.id) : undefined}
+                            compact
+                        />
+                    ) : null}
                 </div>
 
                 <Link href={detailHref} className="flex flex-col gap-3">
