@@ -18,6 +18,9 @@ export class PostService {
     return await this.prisma.post.findMany({
       skip,
       take,
+      orderBy: {
+        createdAt: 'desc'
+      }
     });
   }
 
@@ -59,6 +62,9 @@ export class PostService {
       },
       take,
       skip,
+      orderBy: {
+        createdAt: 'desc'
+      }
     });
   }
   async userPostsCount(userId: number) {
