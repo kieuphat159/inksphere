@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import { Post } from "@/lib/types/modelTypes";
@@ -14,6 +14,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 type Props = Partial<Post> & {
     currentUser?: SessionUser;
+    hideFriendButton?: boolean;
 };
 
 type LikeData = {
@@ -41,6 +42,7 @@ export default function PostCard({
     author,
     currentUser,
     _count,
+    hideFriendButton,
 }: Props) {
     const queryClient = useQueryClient();
     const canInteract = !!currentUser?.id;
@@ -62,6 +64,7 @@ export default function PostCard({
         month: "short",
         day: "numeric",
     });
+    const profileHref = author?.name ? `/user/${encodeURIComponent(author.name)}` : "#";
 
     const updateLikeCache = (liked: boolean) => {
         queryClient.setQueryData<LikeData>(queryKey, (current) => {
@@ -136,7 +139,7 @@ export default function PostCard({
             </div>
             <div className="flex flex-col gap-4 p-5 md:p-6">
                 <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
+                    <Link href={profileHref} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                         <Avatar className="size-10 border border-border/80">
                             <AvatarImage src={author?.avatar ?? undefined} />
                             <AvatarFallback>{authorInitials || "A"}</AvatarFallback>
@@ -147,8 +150,8 @@ export default function PostCard({
                                 {postDate}
                             </p>
                         </div>
-                    </div>
-                    {author?.id ? (
+                    </Link>
+                    {!hideFriendButton && author?.id ? (
                         <FriendButton
                             targetUserId={author.id}
                             currentUserId={currentUser?.id ? Number(currentUser.id) : undefined}

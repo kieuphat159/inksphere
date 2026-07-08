@@ -1,4 +1,4 @@
-import { Resolver, Query, Mutation, Args, Int, Context } from '@nestjs/graphql';
+﻿import { Resolver, Query, Mutation, Args, Int, Context } from '@nestjs/graphql';
 import { PostService } from './post.service';
 import { Post } from './entities/post.entity';
 import { CreatePostInput } from './dto/create-post.input';
@@ -11,7 +11,6 @@ import { DEFAULT_PAGE_SIZE } from 'src/constant';
 export class PostResolver {
   constructor(private readonly postService: PostService) { }
 
-  // @UseGuards(JwtAuthGuard)
   @Query(() => [Post], { name: 'posts' })
   async findAll(
     @Context() context: any,
@@ -49,6 +48,20 @@ export class PostResolver {
     return this.postService.userPostsCount(userId);
   }
 
+  @Query(() => [Post])
+  async getUserPostsByUsername(
+    @Args('username', { type: () => String }) username: string,
+    @Args('skip', { nullable: true, type: () => Int }) skip?: number,
+    @Args('take', { nullable: true, type: () => Int }) take?: number
+  ) {
+    return await this.postService.findByUsername({ username, skip: skip ?? 0, take: take ?? DEFAULT_PAGE_SIZE });
+  }
+
+  @Query(() => Int)
+  async getUserPostsCountByUsername(@Args('username', { type: () => String }) username: string) {
+    return await this.postService.countByUsername(username);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Mutation(() => Post)
   createPost(
@@ -69,10 +82,10 @@ export class PostResolver {
     return this.postService.update({ userId, updatePostInput });
   }
 
-    @UseGuards(JwtAuthGuard)
-    @Mutation(() => Boolean)
-    deletePost(@Context() context, @Args('postId', { type: () => Int }) postId: number) {
-        const userId = context.req.user.id;
-        return this.postService.deletePost({ userId, postId });
-    }
+  @UseGuards(JwtAuthGuard)
+  @Mutation(() => Boolean)
+  deletePost(@Context() context, @Args('postId', { type: () => Int }) postId: number) {
+    const userId = context.req.user.id;
+    return this.postService.deletePost({ userId, postId });
+  }
 }

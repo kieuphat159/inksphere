@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Friendship, User } from "@/lib/types/modelTypes";
 import {
@@ -12,6 +12,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import FriendButton from "./friendButton";
 
@@ -32,7 +33,7 @@ const UserRow = ({
     children?: React.ReactNode;
 }) => (
     <div className="flex items-center justify-between gap-4 py-4 border-b border-border/60 last:border-b-0">
-        <div className="flex items-center gap-3 min-w-0">
+        <Link href={`/user/${encodeURIComponent(user.name)}`} className="flex items-center gap-3 min-w-0 hover:opacity-80 transition-opacity flex-1">
             <Avatar className="border border-border size-10">
                 <AvatarImage src={user.avatar || undefined} />
                 <AvatarFallback>
@@ -45,7 +46,7 @@ const UserRow = ({
                     {user.email}
                 </p>
             </div>
-        </div>
+        </Link>
         {children}
     </div>
 );
@@ -136,8 +137,8 @@ const FriendsPanel = ({
             {activeTab === "friends" && (
                 <div>
                     {friends.length === 0 ? (
-                        <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground text-center py-12">
-                            You have no friends yet. Search for people to connect with.
+                        <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground text-center py-8">
+                            No friends yet
                         </p>
                     ) : (
                         friends.map((friend) => (
@@ -146,7 +147,7 @@ const FriendsPanel = ({
                                     type="button"
                                     onClick={() => removeMutation.mutate(friend.id)}
                                     disabled={removeMutation.isPending}
-                                    className="font-mono text-[10px] uppercase tracking-widest font-bold px-3 py-1.5 border border-border text-red-600 hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors disabled:opacity-50"
+                                    className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] px-3 py-1.5 border border-border text-red-600 hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors disabled:opacity-50"
                                 >
                                     Unfriend
                                 </button>

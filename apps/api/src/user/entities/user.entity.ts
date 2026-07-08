@@ -1,4 +1,4 @@
-import { ObjectType, Field, Int } from '@nestjs/graphql';
+﻿import { ObjectType, Field, Int } from '@nestjs/graphql';
 import { CommentEntity } from 'src/comment/entities/comment.entity';
 import { Post } from 'src/post/entities/post.entity';
 
@@ -19,9 +19,15 @@ export class User {
     @Field({ nullable: true })
     avatar?: string;
 
-    @Field(() => [Post])
+    @Field({ nullable: true })
+    createdAt?: Date;
+
+    @Field({ nullable: true })
+    updatedAt?: Date;
+
+    @Field(() => [Post], { nullable: true })
     posts?: Post[];
 
-    @Field(() => [CommentEntity])
+    @Field(() => [CommentEntity], { nullable: true })
     comments?: CommentEntity[];
 }

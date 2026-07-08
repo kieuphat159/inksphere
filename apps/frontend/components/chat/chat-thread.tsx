@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import {
   PaperAirplaneIcon,
   VideoCameraIcon,
 } from "@heroicons/react/24/outline";
+import Link from "next/link";
 import type { RefObject } from "react";
 import ChatCallPanel from "./chat-call-panel";
 import {
@@ -122,6 +123,13 @@ export default function ChatThread({
     onSendMessage(content);
   };
 
+  const otherMember = activeConversation.members.find(
+    (member) => String(member.userId) !== String(session.user.id),
+  );
+  const headerProfileHref = otherMember?.user?.name
+    ? `/user/${encodeURIComponent(otherMember.user.name)}`
+    : null;
+
   return (
     <>
       <div className="flex shrink-0 items-center justify-between border-b border-border/70 px-4 py-3">
@@ -135,57 +143,62 @@ export default function ChatThread({
               <ArrowLeftIcon className="size-5" />
             </button>
           )}
-          <Avatar className="size-10 border border-border/80">
-            <AvatarImage
-              src={
-                activeConversation.members.find(
-                  (member) => String(member.userId) !== String(session.user.id),
-                )?.user.avatar ?? undefined
-              }
-            />
-            <AvatarFallback>
-              {avatarFallback(
-                activeConversation.members.find(
-                  (member) => String(member.userId) !== String(session.user.id),
-                )?.user,
-              )}
-            </AvatarFallback>
-          </Avatar>
+          {headerProfileHref ? (
+            <Link href={headerProfileHref} className="hover:opacity-80 transition-opacity">
+              <Avatar className="size-10 border border-border/80">
+                <AvatarImage src={otherMember?.user?.avatar ?? undefined} />
+                <AvatarFallback>
+                  {avatarFallback(otherMember?.user)}
+                </AvatarFallback>
+              </Avatar>
+            </Link>
+          ) : (
+            <Avatar className="size-10 border border-border/80">
+              <AvatarImage
+                src={otherMember?.user?.avatar ?? undefined}
+              />
+              <AvatarFallback>
+                {avatarFallback(otherMember?.user)}
+              </AvatarFallback>
+            </Avatar>
+          )}
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">
               {getConversationLabel(activeConversation, session.user.id)}
             </p>
-            <p className="truncate text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+            <p className="truncate text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
               {getConversationSubtitle(activeConversation, session.user.id)}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button type="button" variant="ghost" size="icon-sm" onClick={startCall} aria-label="Start video call">
-            <VideoCameraIcon className="size-4" />
-          </Button>
-          <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            <span className="size-2 rounded-full bg-emerald-500" />
-            {socketState}
-          </div>
-        </div>
+        <button
+          type="button"
+          onClick={startCall}
+          disabled={callState !== "idle"}
+          className="flex items-center justify-center rounded-full border border-border p-2.5 text-muted-foreground transition-colors hover:border-foreground hover:bg-foreground hover:text-background disabled:opacity-40"
+        >
+          <VideoCameraIcon className="size-5" />
+        </button>
       </div>
 
-      {incomingCall ? (
-        <div className="border-b border-border/70 bg-foreground/5 px-4 py-3">
-          <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-background/80 p-3">
-            <div>
-              <p className="text-sm font-semibold">Incoming video call</p>
-              <p className="text-xs text-muted-foreground">A call is waiting for your reply.</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={rejectCall}>
-                Decline
-              </Button>
-              <Button type="button" size="sm" onClick={acceptCall}>
-                Accept
-              </Button>
-            </div>
+      {incomingCall && callState === "incoming" ? (
+        <div className="flex items-center justify-between gap-3 border-b border-border/70 bg-muted/60 px-4 py-3">
+          <p className="text-sm font-medium">Incoming video call…</p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={acceptCall}
+              className="rounded-full bg-green-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-green-700"
+            >
+              Accept
+            </button>
+            <button
+              type="button"
+              onClick={rejectCall}
+              className="rounded-full bg-red-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
+            >
+              Decline
+            </button>
           </div>
         </div>
       ) : null}

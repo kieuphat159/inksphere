@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+﻿import { Injectable } from '@nestjs/common';
 import { CreatePostInput } from './dto/create-post.input';
 import { UpdatePostInput } from './dto/update-post.input';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -76,12 +76,67 @@ export class PostService {
       }
     });
   }
+
   async userPostsCount(userId: number) {
     return await this.prisma.post.count({
       where: {
         author: {
           id: userId
         }
+      }
+    });
+  }
+
+  async findByUsername({ username, skip, take }: { username: string; skip?: number; take?: number }) {
+    return await this.prisma.post.findMany({
+      where: {
+        author: {
+          name: {
+            equals: username,
+            mode: 'insensitive'
+          }
+        },
+        published: true
+      },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        thumbnail: true,
+        content: true,
+        createdAt: true,
+        author: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true
+          }
+        },
+        _count: {
+          select: {
+            comments: true,
+            likes: true,
+          },
+        }
+      },
+      take,
+      skip,
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+  }
+
+  async countByUsername(username: string) {
+    return await this.prisma.post.count({
+      where: {
+        author: {
+          name: {
+            equals: username,
+            mode: 'insensitive'
+          }
+        },
+        published: true
       }
     });
   }

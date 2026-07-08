@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
@@ -48,7 +48,10 @@ const Profile = ({ user }: Props) => {
         setLoadingItem(href);
     };
 
+    const profileHref = user.name ? `/user/${encodeURIComponent(user.name)}` : "#";
+
     const navItems = [
+        { href: profileHref, label: "My Profile", Icon: UserIcon },
         { href: "/user/create-post", label: "Create Post", Icon: PencilSquareIcon },
         { href: "/user/posts", label: "My Posts", Icon: ListBulletIcon },
         { href: "/user/friends", label: "Friends", Icon: UserGroupIcon },

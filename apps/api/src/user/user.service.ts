@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+﻿import { Injectable } from '@nestjs/common';
 import { CreateUserInput } from './dto/create-user.input';
 import { UpdateUserInput } from './dto/update-user.input';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -17,6 +17,26 @@ export class UserService {
         ...user,
         password: hashedPassword,
       },
+    });
+  }
+
+  async findByUsername(username: string) {
+    return await this.prisma.user.findFirst({
+      where: {
+        name: {
+          equals: username,
+          mode: 'insensitive'
+        }
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        avatar: true,
+        bio: true,
+        createdAt: true,
+        updatedAt: true,
+      }
     });
   }
 }

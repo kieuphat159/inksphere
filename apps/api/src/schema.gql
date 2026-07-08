@@ -8,9 +8,16 @@ type User {
   email: String!
   bio: String
   avatar: String
-  posts: [Post!]!
-  comments: [CommentEntity!]!
+  createdAt: DateTime
+  updatedAt: DateTime
+  posts: [Post!]
+  comments: [CommentEntity!]
 }
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
 
 type CommentEntity {
   id: Int!
@@ -19,11 +26,6 @@ type CommentEntity {
   author: User!
   createdAt: DateTime!
 }
-
-"""
-A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
-"""
-scalar DateTime
 
 type Tag {
   id: Int!
@@ -90,6 +92,9 @@ type Query {
   getPostById(id: Int!): Post!
   getUserPosts(skip: Int, take: Int): [Post!]!
   userPostsCount: Int!
+  getUserPostsByUsername(username: String!, skip: Int, take: Int): [Post!]!
+  getUserPostsCountByUsername(username: String!): Int!
+  getUserByUsername(username: String!): User
   getPostComments(postId: Int!, take: Int = 12, skip: Int = 0): [CommentEntity!]!
   postCommentsCount(postId: Int!): Int!
   postLikeCount(postId: Int!): Int!

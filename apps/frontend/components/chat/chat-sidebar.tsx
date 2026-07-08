@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,7 @@ import type { ChatConversation, ChatFriend } from "@/lib/chat";
 import type { Session } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { MagnifyingGlassIcon, PencilSquareIcon, PlusIcon } from "@heroicons/react/24/outline";
+import Link from "next/link";
 import type { Dispatch, SetStateAction } from "react";
 import {
   avatarFallback,
@@ -115,6 +116,13 @@ export default function ChatSidebar({
                       )?.lastReadAt ?? 0,
                     ).getTime();
 
+                const otherMember = conversation.members.find(
+                  (member) => String(member.userId) !== String(session.user.id),
+                );
+                const profileHref = otherMember?.user?.name
+                  ? `/user/${encodeURIComponent(otherMember.user.name)}`
+                  : null;
+
                 return (
                   <button
                     key={conversation.id}
@@ -125,61 +133,42 @@ export default function ChatSidebar({
                       isActive ? "bg-foreground text-background" : "hover:bg-muted",
                     )}
                   >
-                    <Avatar className="mt-0.5 size-10 shrink-0 border border-border/80">
-                      <AvatarImage
-                        src={
-                          conversation.members.find(
-                            (member) => String(member.userId) !== String(session.user.id),
-                          )?.user.avatar ?? undefined
-                        }
-                      />
-                      <AvatarFallback className={isActive ? "bg-background text-foreground" : ""}>
-                        {avatarFallback(
-                          conversation.members.find(
-                            (member) => String(member.userId) !== String(session.user.id),
-                          )?.user,
-                        )}
-                      </AvatarFallback>
-                    </Avatar>
-
+                    {profileHref ? (
+                      <Link
+                        href={profileHref}
+                        onClick={(e) => e.stopPropagation()}
+                        className="mt-0.5 shrink-0 hover:opacity-80 transition-opacity"
+                      >
+                        <Avatar className="size-10 border border-border/80">
+                          <AvatarImage src={otherMember?.user?.avatar ?? undefined} />
+                          <AvatarFallback>{avatarFallback(otherMember?.user)}</AvatarFallback>
+                        </Avatar>
+                      </Link>
+                    ) : (
+                      <Avatar className="mt-0.5 size-10 shrink-0 border border-border/80">
+                        <AvatarImage src={otherMember?.user?.avatar ?? undefined} />
+                        <AvatarFallback>{avatarFallback(otherMember?.user)}</AvatarFallback>
+                      </Avatar>
+                    )}
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="truncate text-sm font-semibold">{label}</p>
-                          <p
+                      <div className="flex items-baseline justify-between gap-2">
+                        <p className="truncate text-sm font-semibold">{label}</p>
+                        {lastMessageAt && (
+                          <span
                             className={cn(
-                              "truncate text-[11px] uppercase tracking-[0.2em]",
+                              "shrink-0 text-[10px] uppercase tracking-[0.2em]",
                               isActive ? "text-background/70" : "text-muted-foreground",
                             )}
                           >
-                            {subtitle}
-                          </p>
-                        </div>
-                        <div className="flex flex-col items-end gap-1">
-                          {lastMessageAt ? (
-                            <span
-                              className={cn(
-                                "text-[10px] uppercase tracking-[0.2em]",
-                                isActive ? "text-background/60" : "text-muted-foreground",
-                              )}
-                            >
-                              {lastMessageAt}
-                            </span>
-                          ) : null}
-                          {unread ? (
-                            <span
-                              className={cn(
-                                "size-2 rounded-full",
-                                isActive ? "bg-background" : "bg-foreground",
-                              )}
-                            />
-                          ) : null}
-                        </div>
+                            {lastMessageAt}
+                          </span>
+                        )}
                       </div>
                       <p
                         className={cn(
-                          "mt-2 line-clamp-2 text-sm",
-                          isActive ? "text-background/80" : "text-muted-foreground",
+                          "mt-0.5 truncate text-[11px] uppercase tracking-[0.2em]",
+                          isActive ? "text-background/70" : "text-muted-foreground",
+                          unread && !isActive && "font-semibold text-foreground",
                         )}
                       >
                         {lastMessageText}
@@ -240,10 +229,16 @@ export default function ChatSidebar({
                         disabled={createDirectPending}
                         className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors hover:bg-muted disabled:opacity-60"
                       >
-                        <Avatar className="size-10 border border-border/80">
-                          <AvatarImage src={friend.avatar ?? undefined} />
-                          <AvatarFallback>{avatarFallback(friend)}</AvatarFallback>
-                        </Avatar>
+                        <Link
+                          href={`/user/${encodeURIComponent(friend.name)}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="shrink-0 hover:opacity-80 transition-opacity"
+                        >
+                          <Avatar className="size-10 border border-border/80">
+                            <AvatarImage src={friend.avatar ?? undefined} />
+                            <AvatarFallback>{avatarFallback(friend)}</AvatarFallback>
+                          </Avatar>
+                        </Link>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-semibold">{friend.name}</p>
                           <p className="truncate text-[11px] uppercase tracking-[0.2em] text-muted-foreground">

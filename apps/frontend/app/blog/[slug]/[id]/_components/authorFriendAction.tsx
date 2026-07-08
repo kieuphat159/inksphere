@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import FriendButton from "@/app/user/friends/_components/friendButton";
 import { SessionUser } from "@/lib/session";
+import Link from "next/link";
 
 type Props = {
     authorId: number;
@@ -12,7 +13,9 @@ type Props = {
 const AuthorFriendAction = ({ authorId, authorName, currentUser }: Props) => {
     return (
         <div className="flex items-center gap-4 flex-wrap">
-            <span>By {authorName}</span>
+            <Link href={`/user/${encodeURIComponent(authorName)}`} className="hover:underline underline-offset-4 transition-colors">
+                By {authorName}
+            </Link>
             <FriendButton
                 targetUserId={authorId}
                 currentUserId={currentUser?.id ? Number(currentUser.id) : undefined}
