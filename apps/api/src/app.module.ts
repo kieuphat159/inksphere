@@ -15,6 +15,10 @@ import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 import { ChatModule } from './chat/chat.module';
 import { CallModule } from './call/call.module';
+import { RedisModule } from './redis/redis.module';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+import { GqlThrottlerGuard } from './common/guards/gql-throttler.guard';
 
 @Module({
   imports: [
@@ -33,8 +37,20 @@ import { CallModule } from './call/call.module';
     FriendModule,
     AuthModule,
     ChatModule,
-    CallModule],
+    CallModule,
+    RedisModule,
+    ThrottlerModule.forRoot([{
+      ttl: 60000,
+      limit: 100,
+    }]),
+  ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: GqlThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

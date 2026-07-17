@@ -38,14 +38,16 @@ export function startTiming(method: string, url: string): RequestTiming {
   return timing;
 }
 
-export function runWithTiming<T>(
-  timing: RequestTiming,
-  fn: () => T,
-): T {
+export function runWithTiming<T>(timing: RequestTiming, fn: () => T): T {
   return timingStore.run(timing, fn);
 }
 
-export function logDbQuery(model: string, action: string, durationMs: number, args?: unknown): void {
+export function logDbQuery(
+  model: string,
+  action: string,
+  durationMs: number,
+  args?: unknown,
+): void {
   const timing = getCurrentTiming();
   if (!timing) return;
   timing.dbQueries.push({ model, action, durationMs, args });
@@ -80,7 +82,9 @@ export function formatTimingReport(timing: RequestTiming): string {
     for (const q of timing.dbQueries) {
       lines.push(`│   - ${q.model}.${q.action} | ${q.durationMs.toFixed(2)}ms`);
     }
-    lines.push(`├──────────────────────────────────────────────────────────────────────`);
+    lines.push(
+      `├──────────────────────────────────────────────────────────────────────`,
+    );
   }
 
   if (timing.checkpoints.size > 0) {
@@ -88,18 +92,26 @@ export function formatTimingReport(timing: RequestTiming): string {
     for (const [name, elapsed] of timing.checkpoints) {
       lines.push(`│   - ${name}: ${elapsed.toFixed(2)}ms`);
     }
-    lines.push(`├──────────────────────────────────────────────────────────────────────`);
+    lines.push(
+      `├──────────────────────────────────────────────────────────────────────`,
+    );
   }
 
   // Bottleneck warning
   const dbRatio = timing.totalDbTimeMs / totalMs;
   if (dbRatio > 0.7) {
-    lines.push(`│ ⚠️ BOTTLENECK: DB queries take ${(dbRatio * 100).toFixed(0)}% of total time`);
+    lines.push(
+      `│ ⚠️ BOTTLENECK: DB queries take ${(dbRatio * 100).toFixed(0)}% of total time`,
+    );
   }
   if (totalMs > 5000) {
-    lines.push(`│ ⚠️ SLOW REQUEST: ${totalMs.toFixed(0)}ms exceeds 5s threshold`);
+    lines.push(
+      `│ ⚠️ SLOW REQUEST: ${totalMs.toFixed(0)}ms exceeds 5s threshold`,
+    );
   }
 
-  lines.push(`└──────────────────────────────────────────────────────────────────────`);
+  lines.push(
+    `└──────────────────────────────────────────────────────────────────────`,
+  );
   return lines.join('\n');
 }
