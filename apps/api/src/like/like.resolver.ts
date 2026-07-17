@@ -7,12 +7,12 @@ import { LikeService } from './like.service';
 @Resolver(() => Like)
 export class LikeResolver {
   constructor(private readonly likeService: LikeService) {}
-  
+
   @UseGuards(JwtAuthGuard)
   @Mutation(() => Boolean)
   async likePost(
     @Context() context,
-    @Args('postId', { type: () => Int }) postId: number
+    @Args('postId', { type: () => Int }) postId: number,
   ) {
     const userId = context.req.user.id;
     return await this.likeService.likePost({ userId, postId });
@@ -22,7 +22,7 @@ export class LikeResolver {
   @Mutation(() => Boolean)
   async unlikePost(
     @Context() context,
-    @Args('postId', { type: () => Int }) postId: number
+    @Args('postId', { type: () => Int }) postId: number,
   ) {
     const userId = context.req.user.id;
     return await this.likeService.unlikePost({ userId, postId });
@@ -37,7 +37,7 @@ export class LikeResolver {
   @Mutation(() => Boolean)
   async userLikedPost(
     @Context() context,
-    @Args('postId', { type: () => Int }) postId: number
+    @Args('postId', { type: () => Int }) postId: number,
   ) {
     const userId = context.req.user.id;
     return await this.likeService.userLikedPost({ userId, postId });

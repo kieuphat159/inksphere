@@ -1,4 +1,12 @@
-import { ArrayNotEmpty, IsArray, IsNumber, IsOptional, IsString, Min, ArrayUnique } from 'class-validator';
+import {
+  ArrayNotEmpty,
+  IsArray,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+  ArrayUnique,
+} from 'class-validator';
 
 export class CreateGroupConversationDto {
   @IsOptional()

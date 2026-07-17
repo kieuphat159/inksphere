@@ -1,4 +1,11 @@
-import { IsEnum, IsNumber, IsObject, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsNumber,
+  IsObject,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
 import { MessageType } from '@prisma/client';
 
 export class SendMessageDto {

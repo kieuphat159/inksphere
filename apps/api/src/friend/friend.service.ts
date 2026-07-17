@@ -20,7 +20,9 @@ export class FriendService {
     receiverId: number;
   }) {
     if (requesterId === receiverId) {
-      throw new BadRequestException('You cannot send a friend request to yourself');
+      throw new BadRequestException(
+        'You cannot send a friend request to yourself',
+      );
     }
 
     const receiver = await this.prisma.user.findUnique({

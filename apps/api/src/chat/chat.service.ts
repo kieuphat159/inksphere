@@ -13,6 +13,7 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { logCheckpoint } from 'src/common/timing.context';
 import { CreateGroupConversationDto } from './dto/create-group-conversation.dto';
+import { RedisService } from 'src/redis/redis.service';
 
 type MessageListOptions = {
   limit?: number;
@@ -21,24 +22,21 @@ type MessageListOptions = {
 
 @Injectable()
 export class ChatService {
-  private readonly userCache = new Map<
-    number,
-    { expiresAt: number; value: { id: number } | null }
-  >();
-  private readonly memberCache = new Map<
-    string,
-    { expiresAt: number; value: ConversationMember }
-  >();
-  private readonly userCacheTtlMs = Math.max(
-    Number(process.env.CHAT_USER_CACHE_TTL_MS ?? 30000),
-    1000,
+  private readonly userCacheTtlSeconds = Math.max(
+    Math.floor(Number(process.env.CHAT_USER_CACHE_TTL_MS ?? 30000) / 1000),
+    1,
   );
-  private readonly membershipCacheTtlMs = Math.max(
-    Number(process.env.CHAT_MEMBERSHIP_CACHE_TTL_MS ?? 15000),
-    1000,
+  private readonly membershipCacheTtlSeconds = Math.max(
+    Math.floor(
+      Number(process.env.CHAT_MEMBERSHIP_CACHE_TTL_MS ?? 15000) / 1000,
+    ),
+    1,
   );
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly redisService: RedisService,
+  ) {}
 
   async getConversations(userId: number) {
     return this.prisma.conversation.findMany({
@@ -337,7 +335,9 @@ export class ChatService {
       lastReadAt,
     });
 
-    console.log(`[⏱ ChatService.sendMessage] total: ${Date.now() - __start}ms | convId: ${conversationId}`);
+    console.log(
+      `[⏱ ChatService.sendMessage] total: ${Date.now() - __start}ms | convId: ${conversationId}`,
+    );
     return {
       message,
       conversationId,
@@ -380,9 +380,10 @@ export class ChatService {
   }
 
   async findUserById(userId: number) {
-    const cachedUser = this.userCache.get(userId);
-    if (cachedUser && cachedUser.expiresAt > Date.now()) {
-      return cachedUser.value;
+    const cacheKey = `chat:user:${userId}`;
+    const cached = await this.redisService.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached) as { id: number } | null;
     }
 
     const user = await this.prisma.user.findUnique({
@@ -394,19 +395,20 @@ export class ChatService {
       },
     });
 
-    this.userCache.set(userId, {
-      value: user,
-      expiresAt: Date.now() + this.userCacheTtlMs,
-    });
+    await this.redisService.set(
+      cacheKey,
+      JSON.stringify(user),
+      this.userCacheTtlSeconds,
+    );
 
     return user;
   }
 
   async ensureConversationMember(conversationId: number, userId: number) {
-    const cacheKey = this.memberCacheKey(conversationId, userId);
-    const cachedMember = this.memberCache.get(cacheKey);
-    if (cachedMember && cachedMember.expiresAt > Date.now()) {
-      return cachedMember.value;
+    const cacheKey = `chat:member:${conversationId}:${userId}`;
+    const cached = await this.redisService.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached) as ConversationMember;
     }
 
     const member = await this.prisma.conversationMember.findUnique({
@@ -422,22 +424,21 @@ export class ChatService {
       throw new ForbiddenException('You are not a member of this conversation');
     }
 
-    this.cacheConversationMember(member);
+    await this.redisService.set(
+      cacheKey,
+      JSON.stringify(member),
+      this.membershipCacheTtlSeconds,
+    );
     return member;
   }
 
   private cacheConversationMember(member: ConversationMember) {
-    this.memberCache.set(
-      this.memberCacheKey(member.conversationId, member.userId),
-      {
-        value: member,
-        expiresAt: Date.now() + this.membershipCacheTtlMs,
-      },
-    );
-  }
-
-  private memberCacheKey(conversationId: number, userId: number) {
-    return `${conversationId}:${userId}`;
+    const cacheKey = `chat:member:${member.conversationId}:${member.userId}`;
+    this.redisService.set(
+      cacheKey,
+      JSON.stringify(member),
+      this.membershipCacheTtlSeconds,
+    ).catch(() => {});
   }
 
   private validateMessagePayload(data: {

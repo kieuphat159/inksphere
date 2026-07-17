@@ -20,9 +20,14 @@ type AuthedSocket = Socket & {
   };
 };
 
-function logWSTiming(event: string, durationMs: number, meta?: Record<string, unknown>): void {
-  // eslint-disable-next-line no-console
-  console.log(`[⏱ WS][${event}] ${durationMs}ms${meta ? ` | ${JSON.stringify(meta)}` : ''}`);
+function logWSTiming(
+  event: string,
+  durationMs: number,
+  meta?: Record<string, unknown>,
+): void {
+  console.log(
+    `[⏱ WS][${event}] ${durationMs}ms${meta ? ` | ${JSON.stringify(meta)}` : ''}`,
+  );
 }
 
 @WebSocketGateway({
@@ -59,7 +64,10 @@ export class CallGateway implements OnGatewayConnection, OnGatewayDisconnect {
     } catch {
       client.disconnect(true);
     } finally {
-      logWSTiming('connection', Date.now() - start, { connected, userId: client.data.user?.id });
+      logWSTiming('connection', Date.now() - start, {
+        connected,
+        userId: client.data.user?.id,
+      });
     }
   }
 
@@ -83,8 +91,14 @@ export class CallGateway implements OnGatewayConnection, OnGatewayDisconnect {
     );
 
     if (!canInitiate) {
-      logWSTiming('call:invite', Date.now() - start, { result: 'failed', conversationId: body.conversationId });
-      return { event: 'call:invite:failed', data: { message: 'Unable to start call' } };
+      logWSTiming('call:invite', Date.now() - start, {
+        result: 'failed',
+        conversationId: body.conversationId,
+      });
+      return {
+        event: 'call:invite:failed',
+        data: { message: 'Unable to start call' },
+      };
     }
 
     this.server.to(this.userRoom(body.targetUserId)).emit('call:incoming', {
@@ -93,8 +107,14 @@ export class CallGateway implements OnGatewayConnection, OnGatewayDisconnect {
       fromUserName: user.id,
     });
 
-    logWSTiming('call:invite', Date.now() - start, { result: 'sent', conversationId: body.conversationId });
-    return { event: 'call:invite:sent', data: { targetUserId: body.targetUserId } };
+    logWSTiming('call:invite', Date.now() - start, {
+      result: 'sent',
+      conversationId: body.conversationId,
+    });
+    return {
+      event: 'call:invite:sent',
+      data: { targetUserId: body.targetUserId },
+    };
   }
 
   @SubscribeMessage('call:accept')
@@ -109,8 +129,13 @@ export class CallGateway implements OnGatewayConnection, OnGatewayDisconnect {
       toUserId: user.id,
     });
 
-    logWSTiming('call:accept', Date.now() - start, { conversationId: body.conversationId });
-    return { event: 'call:accepted:ack', data: { conversationId: body.conversationId } };
+    logWSTiming('call:accept', Date.now() - start, {
+      conversationId: body.conversationId,
+    });
+    return {
+      event: 'call:accepted:ack',
+      data: { conversationId: body.conversationId },
+    };
   }
 
   @SubscribeMessage('call:offer')
@@ -124,7 +149,9 @@ export class CallGateway implements OnGatewayConnection, OnGatewayDisconnect {
       fromUserId: client.data.user!.id,
       offer: body.offer,
     });
-    logWSTiming('call:offer', Date.now() - start, { targetUserId: body.targetUserId });
+    logWSTiming('call:offer', Date.now() - start, {
+      targetUserId: body.targetUserId,
+    });
   }
 
   @SubscribeMessage('call:answer')
@@ -138,7 +165,9 @@ export class CallGateway implements OnGatewayConnection, OnGatewayDisconnect {
       fromUserId: client.data.user!.id,
       answer: body.answer,
     });
-    logWSTiming('call:answer', Date.now() - start, { targetUserId: body.targetUserId });
+    logWSTiming('call:answer', Date.now() - start, {
+      targetUserId: body.targetUserId,
+    });
   }
 
   @SubscribeMessage('call:reject')
@@ -153,8 +182,13 @@ export class CallGateway implements OnGatewayConnection, OnGatewayDisconnect {
       fromUserId: user.id,
     });
 
-    logWSTiming('call:reject', Date.now() - start, { conversationId: body.conversationId });
-    return { event: 'call:rejected:ack', data: { conversationId: body.conversationId } };
+    logWSTiming('call:reject', Date.now() - start, {
+      conversationId: body.conversationId,
+    });
+    return {
+      event: 'call:rejected:ack',
+      data: { conversationId: body.conversationId },
+    };
   }
 
   @SubscribeMessage('call:ice-candidate')
@@ -164,10 +198,12 @@ export class CallGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     const start = Date.now();
     const user = this.requireUser(client);
-    this.server.to(this.userRoom(body.targetUserId)).emit('call:ice-candidate', {
-      fromUserId: user.id,
-      candidate: body.candidate,
-    });
+    this.server
+      .to(this.userRoom(body.targetUserId))
+      .emit('call:ice-candidate', {
+        fromUserId: user.id,
+        candidate: body.candidate,
+      });
     logWSTiming('call:ice-candidate', Date.now() - start);
   }
 
@@ -185,7 +221,7 @@ export class CallGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private extractToken(client: AuthedSocket) {
     const authToken = client.handshake.auth?.token as string | undefined;
-    const headerToken = client.handshake.headers.authorization as string | undefined;
+    const headerToken = client.handshake.headers.authorization;
     const token = authToken ?? headerToken;
 
     if (!token) {

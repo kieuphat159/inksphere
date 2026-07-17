@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth/jwt-auth.guard';
 import { ChatService } from './chat.service';
 import { CreateDirectConversationDto } from './dto/create-direct-conversation.dto';
@@ -29,8 +39,14 @@ export class ChatController {
   }
 
   @Post('conversations/direct')
-  async createDirect(@Req() req: any, @Body() body: CreateDirectConversationDto) {
-    return this.chatService.createDirectConversation(req.user.id, body.participantId);
+  async createDirect(
+    @Req() req: any,
+    @Body() body: CreateDirectConversationDto,
+  ) {
+    return this.chatService.createDirectConversation(
+      req.user.id,
+      body.participantId,
+    );
   }
 
   @Post('conversations/group')
@@ -44,6 +60,10 @@ export class ChatController {
     @Param('id', ParseIntPipe) conversationId: number,
     @Body() body: MarkReadDto,
   ) {
-    return this.chatService.markConversationRead(req.user.id, conversationId, body.readAt);
+    return this.chatService.markConversationRead(
+      req.user.id,
+      conversationId,
+      body.readAt,
+    );
   }
 }

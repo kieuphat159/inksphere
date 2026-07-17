@@ -19,7 +19,7 @@ export class Post {
 
   @Field()
   title: string;
-  
+
   @Field({ nullable: true })
   slug?: string;
 
@@ -34,7 +34,7 @@ export class Post {
 
   @Field()
   createdAt: Date;
-  
+
   @Field()
   updatedAt: Date;
 

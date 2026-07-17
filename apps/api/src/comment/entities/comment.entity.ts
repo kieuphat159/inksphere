@@ -9,10 +9,10 @@ export class CommentEntity {
 
   @Field()
   content: string;
-  
+
   @Field(() => Post)
   post: Post;
-  
+
   @Field(() => User)
   author: User;
 

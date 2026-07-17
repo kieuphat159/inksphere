@@ -9,7 +9,7 @@ import { DEFAULT_PAGE_SIZE } from 'src/constant';
 
 @Resolver(() => Post)
 export class PostResolver {
-  constructor(private readonly postService: PostService) { }
+  constructor(private readonly postService: PostService) {}
 
   @Query(() => [Post], { name: 'posts' })
   async findAll(
@@ -35,10 +35,14 @@ export class PostResolver {
   getUserPosts(
     @Context() context,
     @Args('skip', { nullable: true, type: () => Int }) skip?: number,
-    @Args('take', { nullable: true, type: () => Int }) take?: number
+    @Args('take', { nullable: true, type: () => Int }) take?: number,
   ) {
     const userId = context.req.user.id;
-    return this.postService.findByUser({ userId, skip: skip ?? 0, take: take ?? DEFAULT_PAGE_SIZE });
+    return this.postService.findByUser({
+      userId,
+      skip: skip ?? 0,
+      take: take ?? DEFAULT_PAGE_SIZE,
+    });
   }
 
   @UseGuards(JwtAuthGuard)
@@ -52,13 +56,19 @@ export class PostResolver {
   async getUserPostsByUsername(
     @Args('username', { type: () => String }) username: string,
     @Args('skip', { nullable: true, type: () => Int }) skip?: number,
-    @Args('take', { nullable: true, type: () => Int }) take?: number
+    @Args('take', { nullable: true, type: () => Int }) take?: number,
   ) {
-    return await this.postService.findByUsername({ username, skip: skip ?? 0, take: take ?? DEFAULT_PAGE_SIZE });
+    return await this.postService.findByUsername({
+      username,
+      skip: skip ?? 0,
+      take: take ?? DEFAULT_PAGE_SIZE,
+    });
   }
 
   @Query(() => Int)
-  async getUserPostsCountByUsername(@Args('username', { type: () => String }) username: string) {
+  async getUserPostsCountByUsername(
+    @Args('username', { type: () => String }) username: string,
+  ) {
     return await this.postService.countByUsername(username);
   }
 
@@ -66,7 +76,7 @@ export class PostResolver {
   @Mutation(() => Post)
   createPost(
     @Context() context,
-    @Args('createPostInput') createPostInput: CreatePostInput
+    @Args('createPostInput') createPostInput: CreatePostInput,
   ) {
     const authorId = context.req.user.id;
     return this.postService.create({ createPostInput, authorId });
@@ -76,7 +86,7 @@ export class PostResolver {
   @Mutation(() => Post)
   updatePost(
     @Context() context,
-    @Args("updatePostInput") updatePostInput: UpdatePostInput
+    @Args('updatePostInput') updatePostInput: UpdatePostInput,
   ) {
     const userId = context.req.user.id;
     return this.postService.update({ userId, updatePostInput });
@@ -84,7 +94,10 @@ export class PostResolver {
 
   @UseGuards(JwtAuthGuard)
   @Mutation(() => Boolean)
-  deletePost(@Context() context, @Args('postId', { type: () => Int }) postId: number) {
+  deletePost(
+    @Context() context,
+    @Args('postId', { type: () => Int }) postId: number,
+  ) {
     const userId = context.req.user.id;
     return this.postService.deletePost({ userId, postId });
   }

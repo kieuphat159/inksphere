@@ -7,7 +7,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class LikeService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async likePost({ postId, userId }: {  postId: number; userId: any }) {
+  async likePost({ postId, userId }: { postId: number; userId: any }) {
     try {
       return !!(await this.prisma.like.create({
         data: {
@@ -56,4 +56,3 @@ export class LikeService {
     return !!like;
   }
 }
-  

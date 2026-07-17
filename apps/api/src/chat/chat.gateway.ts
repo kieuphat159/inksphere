@@ -26,9 +26,14 @@ type AuthedSocket = Socket & {
   };
 };
 
-function logWSTiming(event: string, durationMs: number, meta?: Record<string, unknown>): void {
-  // eslint-disable-next-line no-console
-  console.log(`[⏱ WS][${event}] ${durationMs}ms${meta ? ` | ${JSON.stringify(meta)}` : ''}`);
+function logWSTiming(
+  event: string,
+  durationMs: number,
+  meta?: Record<string, unknown>,
+): void {
+  console.log(
+    `[⏱ WS][${event}] ${durationMs}ms${meta ? ` | ${JSON.stringify(meta)}` : ''}`,
+  );
 }
 
 @WebSocketGateway({
@@ -82,7 +87,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     } catch {
       client.disconnect(true);
     } finally {
-      logWSTiming('chat:connection', Date.now() - start, { connected, userId: client.data.user?.id });
+      logWSTiming('chat:connection', Date.now() - start, {
+        connected,
+        userId: client.data.user?.id,
+      });
     }
   }
 
@@ -105,7 +113,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     );
     await client.join(this.conversationRoom(body.conversationId));
 
-    logWSTiming('chat:conversation:join', Date.now() - start, { conversationId: body.conversationId });
+    logWSTiming('chat:conversation:join', Date.now() - start, {
+      conversationId: body.conversationId,
+    });
     return {
       event: 'conversation:joined',
       data: {
@@ -167,7 +177,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
             body.conversationId,
             participants.map((p) => p.userId),
           );
-          logWSTiming('chat:message:send:complete', Date.now() - sendStart, { queued: queueDuration, conversationId: body.conversationId });
+          logWSTiming('chat:message:send:complete', Date.now() - sendStart, {
+            queued: queueDuration,
+            conversationId: body.conversationId,
+          });
         })
         .catch((error) => {
           client.emit('message:error', {
@@ -252,7 +265,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private extractToken(client: AuthedSocket) {
     const authToken = client.handshake.auth?.token as string | undefined;
-    const headerToken = client.handshake.headers.authorization as string | undefined;
+    const headerToken = client.handshake.headers.authorization;
     const token = authToken ?? headerToken;
 
     if (!token) {

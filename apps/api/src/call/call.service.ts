@@ -5,7 +5,11 @@ import { PrismaService } from '../prisma/prisma.service';
 export class CallService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async canInitiateCall(conversationId: number, callerId: number, targetId: number) {
+  async canInitiateCall(
+    conversationId: number,
+    callerId: number,
+    targetId: number,
+  ) {
     const members = await this.prisma.conversationMember.findMany({
       where: {
         conversationId,

@@ -10,28 +10,29 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth/jwt-auth.guard';
 
 @Resolver(() => CommentEntity)
 export class CommentResolver {
-  constructor(private readonly commentService: CommentService) { }
+  constructor(private readonly commentService: CommentService) {}
 
   @Query(() => [CommentEntity])
-  getPostComments(@Args("postId", { type: () => Int! }) postId: number,
-    @Args("take", {
+  getPostComments(
+    @Args('postId', { type: () => Int }) postId: number,
+    @Args('take', {
       type: () => Int,
       nullable: true,
-      defaultValue: DEFAULT_PAGE_SIZE
+      defaultValue: DEFAULT_PAGE_SIZE,
     })
     take: number,
-    @Args("skip", {
+    @Args('skip', {
       type: () => Int,
       nullable: true,
-      defaultValue: 0
+      defaultValue: 0,
     })
-    skip: number
+    skip: number,
   ) {
     return this.commentService.findOneByPost({ postId, take, skip });
   }
 
   @Query(() => Int)
-  postCommentsCount(@Args("postId", { type: () => Int!}) postId: number) {
+  postCommentsCount(@Args('postId', { type: () => Int }) postId: number) {
     return this.commentService.count(postId);
   }
 
@@ -39,9 +40,9 @@ export class CommentResolver {
   @Mutation(() => CommentEntity)
   createComment(
     @Context() context,
-    @Args('createCommentInput') createCommentInput: CreateCommentInput
+    @Args('createCommentInput') createCommentInput: CreateCommentInput,
   ) {
-    const userId = context.req.user.id; 
+    const userId = context.req.user.id;
     return this.commentService.create(createCommentInput, userId);
   }
 }
