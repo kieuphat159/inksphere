@@ -4,35 +4,58 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
+    const code = searchParams.get("code");
 
-    const accessToken = searchParams.get("accessToken");
-    const userId = searchParams.get("userId");
-    const name = searchParams.get("name");
-    const avatar = searchParams.get("avatar");
-
-    if (!accessToken || !userId || !name || !avatar) {
+    if (!code) {
         return NextResponse.json(
-            { message: "Google authentication failed" },
+            { message: "Google authentication failed: Authorization code missing" },
             { status: 400 }
         );
     }
 
-    const res = await fetch(`${BACKEND_URL}/api/auth/verify-token`, {
+    // Quy đổi mã xác thực một lần lấy accessToken và thông tin User
+    const tokenRes = await fetch(`${BACKEND_URL}/auth/google/token`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ code }),
+    });
+
+    if (!tokenRes.ok) {
+        return NextResponse.json(
+            { message: "Google authentication failed: Code exchange failed" },
+            { status: 401 }
+        );
+    }
+
+    const userData = await tokenRes.json();
+    const { id: userId, name, avatar, accessToken } = userData;
+
+    if (!accessToken || !userId || !name || !avatar) {
+        return NextResponse.json(
+            { message: "Google authentication failed: Invalid user payload" },
+            { status: 400 }
+        );
+    }
+
+    // Xác thực token với Backend (Sửa lỗi đúng endpoint /auth/verify-token)
+    const verifyRes = await fetch(`${BACKEND_URL}/auth/verify-token`, {
         headers: {
             authorization: `Bearer ${accessToken}`,
         },
     });
 
-    if (res.status === 401) {
+    if (!verifyRes.ok) {
         return NextResponse.json(
-            { message: "JWT verification failed" },
+            { message: "Google authentication failed: JWT verification failed" },
             { status: 401 }
         );
     }
 
     await createSession({
         user: {
-            id: userId,
+            id: String(userId),
             name,
             avatar,
         },

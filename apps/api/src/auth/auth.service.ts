@@ -6,21 +6,19 @@ import { JwtService } from '@nestjs/jwt';
 import { AuthJwtPayload } from './types/auth.jwtPayload';
 import { User } from '.prisma/client/default';
 import { CreateUserInput } from 'src/user/dto/create-user.input';
+import { RedisService } from 'src/redis/redis.service';
 
 @Injectable()
 export class AuthService {
-  private readonly jwtUserCache = new Map<
-    number,
-    { expiresAt: number; value: { id: number } }
-  >();
-  private readonly jwtUserCacheTtlMs = Math.max(
-    Number(process.env.AUTH_USER_CACHE_TTL_MS ?? 30000),
-    1000,
+  private readonly jwtUserCacheTtlSeconds = Math.max(
+    Math.floor(Number(process.env.AUTH_USER_CACHE_TTL_MS ?? 30000) / 1000),
+    1,
   );
 
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private redisService: RedisService,
   ) {}
   async validateLocalUser({ email, password }: SignInInput) {
     const user = await this.prisma.user.findUnique({
@@ -59,9 +57,10 @@ export class AuthService {
   async validateJwtUser(userId: number) {
     const __start = Date.now();
     try {
-      const cachedUser = this.jwtUserCache.get(userId);
-      if (cachedUser && cachedUser.expiresAt > Date.now()) {
-        return cachedUser.value;
+      const cacheKey = `jwt:user:${userId}`;
+      const cached = await this.redisService.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached) as { id: number };
       }
 
       const user = await this.prisma.user.findUnique({
@@ -74,13 +73,16 @@ export class AuthService {
         throw new UnauthorizedException('User not found');
       }
       const currentUser = { id: user.id };
-      this.jwtUserCache.set(userId, {
-        value: currentUser,
-        expiresAt: Date.now() + this.jwtUserCacheTtlMs,
-      });
+      await this.redisService.set(
+        cacheKey,
+        JSON.stringify(currentUser),
+        this.jwtUserCacheTtlSeconds,
+      );
       return currentUser;
     } finally {
-      console.log(`[⏱ Service][AuthService.validateJwtUser] ${Date.now() - __start}ms`);
+      console.log(
+        `[⏱ Service][AuthService.validateJwtUser] ${Date.now() - __start}ms`,
+      );
     }
   }
 
@@ -104,5 +106,24 @@ export class AuthService {
 
     const { password, ...authUser } = dbUser;
     return authUser;
+  }
+
+  async generateTempOAuthCode(userData: any): Promise<string> {
+    const code =
+      Math.random().toString(36).substring(2, 15) +
+      Math.random().toString(36).substring(2, 15);
+    const cacheKey = `oauth:code:${code}`;
+    await this.redisService.set(cacheKey, JSON.stringify(userData), 30);
+    return code;
+  }
+
+  async exchangeOAuthCode(code: string): Promise<any> {
+    const cacheKey = `oauth:code:${code}`;
+    const cached = await this.redisService.get(cacheKey);
+    if (!cached) {
+      throw new UnauthorizedException('Invalid or expired authorization code');
+    }
+    await this.redisService.del(cacheKey);
+    return JSON.parse(cached);
   }
 }

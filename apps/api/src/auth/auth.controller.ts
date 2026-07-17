@@ -1,5 +1,4 @@
-import { Controller, UseGuards, Request, Res } from '@nestjs/common';
-import { Get } from '@nestjs/common';
+import { Controller, UseGuards, Request, Res, Get, Post, Body } from '@nestjs/common';
 import { GoogleAuthGuard } from './guards/google-auth/google-auth.guard';
 import { AuthService } from './auth.service';
 import { Response } from 'express';
@@ -9,27 +8,31 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 @Controller('auth')
 export class AuthController {
-    constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) {}
 
-    @UseGuards(GoogleAuthGuard)
-    @Get("google/login")
-    googleLogin() {}
+  @UseGuards(GoogleAuthGuard)
+  @Get('google/login')
+  googleLogin() {}
 
-    @UseGuards(GoogleAuthGuard)
-    @Get("google/callback")
-    async googleCallback(@Request() req, @Res() res: Response) {
-        // console.log("Google callback", req.user);
+  @UseGuards(GoogleAuthGuard)
+  @Get('google/callback')
+  async googleCallback(@Request() req, @Res() res: Response) {
+    const userData = await this.authService.login(req.user);
+    const code = await this.authService.generateTempOAuthCode(userData);
 
-        const userData = await this.authService.login(req.user);
+    res.redirect(
+      `${FRONTEND_URL}/api/auth/google/callback?code=${code}`,
+    );
+  }
 
-        res.redirect(
-            `${FRONTEND_URL}/api/auth/google/callback?userId=${userData.id}&name=${userData.name}&avatar=${userData.avatar}&accessToken=${userData.accessToken}`
-        );
-    }
+  @Post('google/token')
+  async exchangeCodeForToken(@Body() body: { code: string }) {
+    return this.authService.exchangeOAuthCode(body.code);
+  }
 
-    @UseGuards(JwtAuthGuard)
-    @Get("verify-token")
-    verify() {
-        return 'ok';
-    }
+  @UseGuards(JwtAuthGuard)
+  @Get('verify-token')
+  verify() {
+    return 'ok';
+  }
 }

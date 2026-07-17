@@ -1,10 +1,11 @@
-import { F } from '@faker-js/faker/dist/airline-DF6RqYmq';
-import { InputType, Int, Field } from '@nestjs/graphql';
-import { IsEmail } from 'class-validator';
+import { InputType, Field } from '@nestjs/graphql';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
 
 @InputType()
 export class CreateUserInput {
   @Field(() => String)
+  @IsString()
+  @IsNotEmpty()
   name: string;
 
   @Field()
@@ -12,11 +13,18 @@ export class CreateUserInput {
   email: string;
 
   @Field()
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(8)
   password: string;
 
   @Field(() => String, { nullable: true })
+  @IsString()
+  @IsOptional()
   bio?: string;
 
   @Field(() => String, { nullable: true })
+  @IsString()
+  @IsOptional()
   avatar?: string;
 }
