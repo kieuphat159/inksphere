@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 const Hero = () => {
     const imgRef = useRef<HTMLImageElement>(null);
@@ -43,10 +44,13 @@ const Hero = () => {
                 {/* Right Column (Minimal Frame Image) */}
                 <div className="md:col-span-5 flex justify-center items-center">
                     <div className="relative border border-slate-700/50 p-3 bg-slate-900/20 group">
-                        <img
-                            ref={imgRef}
+                        <Image
+                            ref={imgRef as any}
                             src="/hero.png"
                             alt="hero img"
+                            width={384}
+                            height={384}
+                            priority
                             className={cn(
                                 "w-full max-w-sm h-auto object-cover contrast-110 transition-all duration-750",
                                 isVisible ? "grayscale-0" : "grayscale",

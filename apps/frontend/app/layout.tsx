@@ -7,7 +7,7 @@ import NavbarContainer from "@/components/ui/navbarContainer";
 import Providers from "./providers";
 import { Toaster } from "sonner";
 import { getSession } from "@/lib/session";
-import ChatDock from "@/components/chat/chat-dock";
+import ChatDockWrapper from "@/components/chat/ChatDockWrapper";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -97,7 +97,7 @@ export default async function RootLayout({
               </div>
             </div>
           </footer>
-          <ChatDock session={session} />
+          <ChatDockWrapper session={session} />
           <Toaster />
         </Providers>
       </body>
