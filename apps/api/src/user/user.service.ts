@@ -1,8 +1,9 @@
-﻿import { Injectable } from '@nestjs/common';
+import { Injectable, ConflictException } from '@nestjs/common';
 import { CreateUserInput } from './dto/create-user.input';
 import { UpdateUserInput } from './dto/update-user.input';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { hash } from 'argon2';
+import { Prisma } from '.prisma/client/default';
 
 @Injectable()
 export class UserService {
@@ -12,12 +13,22 @@ export class UserService {
     const { password, ...user } = createUserInput;
     const hashedPassword = await hash(password);
 
-    return this.prisma.user.create({
-      data: {
-        ...user,
-        password: hashedPassword,
-      },
-    });
+    try {
+      return await this.prisma.user.create({
+        data: {
+          ...user,
+          password: hashedPassword,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException('Email already exists');
+      }
+      throw error;
+    }
   }
 
   async findByUsername(username: string) {
@@ -25,8 +36,8 @@ export class UserService {
       where: {
         name: {
           equals: username,
-          mode: 'insensitive'
-        }
+          mode: 'insensitive',
+        },
       },
       select: {
         id: true,
@@ -36,7 +47,7 @@ export class UserService {
         bio: true,
         createdAt: true,
         updatedAt: true,
-      }
+      },
     });
   }
 }

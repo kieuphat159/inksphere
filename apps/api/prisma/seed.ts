@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { faker } from "@faker-js/faker";
+import { hash } from "argon2";
 
 const users: Awaited<ReturnType<typeof prisma.user.create>>[] = [];
 const tags: Awaited<ReturnType<typeof prisma.tag.create>>[] = [];
@@ -28,15 +29,28 @@ async function main() {
 
   // USERS
   const users: Awaited<ReturnType<typeof prisma.user.create>>[] = [];
+  const defaultPasswordHash = await hash("password123");
 
-  for (let i = 0; i < TOTAL_USERS; i++) {
+  // Create a predictable test user for front-end verification
+  const testUser = await prisma.user.create({
+    data: {
+      name: "Test User",
+      email: "testuser@example.com",
+      bio: "This is a default test user account for testing.",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=testuser",
+      password: defaultPasswordHash,
+    },
+  });
+  users.push(testUser);
+
+  for (let i = 1; i < TOTAL_USERS; i++) {
     const user = await prisma.user.create({
       data: {
         name: faker.person.fullName(),
         email: faker.internet.email().toLowerCase(),
         bio: faker.lorem.sentence(),
         avatar: faker.image.avatar(),
-        password: faker.internet.password(),
+        password: defaultPasswordHash,
       },
     });
 
