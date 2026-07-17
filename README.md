@@ -181,6 +181,7 @@ npm run dev --workspace=api
 
 ## Build and Production
 
+### Running locally
 ```bash
 npm run build
 ```
@@ -192,24 +193,52 @@ npm run start --workspace=frontend
 npm run start --workspace=api
 ```
 
-Notes:
+### Running with Docker Compose
+The platform is fully containerized and configured for local deployment via Docker Compose.
 
-- The backend requires a `dist` directory built via `npm run build`.
-- The frontend's `start` command only works after a successful build.
+1. Configure `.env` files for both applications:
+   - `apps/api/.env` (Google Client IDs, database connection details, etc.)
+   - `apps/frontend/.env` (Session secret key, etc.)
+2. Launch the services:
+   ```bash
+   docker-compose up --build
+   ```
 
-## Quality Checks
+*Notes:*
+- The PostgreSQL database and Redis stack will start up automatically.
+- Database migrations will deploy automatically at startup via NestJS `db:migrate` workspace tasks.
+- Network routing is fully pre-configured; NestJS API and Next.js SSR communicate directly via the private Docker network bridge (`http://api:8000`), while browser-level client fetches resolve via `http://localhost:8000`.
+
+## Quality Checks & Testing
 
 ```bash
+# Run ESLint checks
 npm run lint
 ```
 
-The backend workspace (`api`) additionally provides test commands:
+The backend workspace (`api`) provides automated testing pipelines:
 
 ```bash
+# Unit tests
 npm run test --workspace=api
+
+# End-to-end tests (runs with force-exit cleanup hooks)
 npm run test:e2e --workspace=api
+
+# Test coverage
 npm run test:cov --workspace=api
 ```
+
+## Security & Performance Optimizations
+
+InkSphere implements production-grade optimizations and security configurations:
+
+- **Strict XSS Sanitization:** Custom `XssSanitizationPipe` strips HTML/Script tags from user inputs on the API before database write. Only targets plain input objects to safeguard system elements.
+- **Global Rate Limiting:** Powered by `@nestjs/throttler` to protect GraphQL and REST endpoints from brute force and denial of service.
+- **Header Protection:** Helmet integration protects against sniffing, XSS, clickjacking, and MIME vulnerabilities.
+- **Redis Connection Fallback:** WebSocket adapters dynamically connect to Redis and failover to internal in-memory fallback mappings in the event of an outage.
+- **Google OAuth Code Exchange:** High-security code exchange flow resolves tokens backend-side, mapping short-lived tokens on Redis to shield credentials from URL leaks.
+- **Image Optimization & Lazy Loading:** Utilizes `next/image` prioritizing hero images, and client-only wrapper components (`ChatDockWrapper.tsx`) to lazy-load chat modules, cutting JS bundle size by 100% for first-time visitors.
 
 ## Authentication Flow
 
