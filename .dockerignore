@@ -1,0 +1,32 @@
+# Exclude dependencies
+node_modules
+**/node_modules
+
+# Exclude build outputs
+dist
+**/dist
+build
+**/build
+.next
+**/.next
+out
+**/out
+
+# Exclude IDE, Git and system files
+.git
+.github
+.idea
+.vscode
+*.log
+.npm
+.yarn
+
+# Exclude temp files, caches and local docs
+.turbo
+**/.turbo
+.agents
+**/.agents
+tmp
+temp
+tsconfig.tsbuildinfo
+**/*.tsbuildinfo
