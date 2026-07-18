@@ -22,6 +22,9 @@ model User {
   comments               Comment[]
   likes                  Like[]
   posts                  Post[]
+  bookmarks              Bookmark[]
+  receivedNotifications  Notification[]       @relation("ReceivedNotifications")
+  sentNotifications      Notification[]       @relation("SentNotifications")
   createdConversations   Conversation[]       @relation("ConversationCreatedBy")
   conversationMembers    ConversationMember[]
   sentMessages           Message[]            @relation("SentMessages")
@@ -30,30 +33,35 @@ model User {
 }
 
 model Post {
-  id        Int       @id @default(autoincrement())
-  slug      String?   @unique
-  title     String
-  content   String
-  thumbnail String?
-  published Boolean
-  authorId  Int
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  comments  Comment[]
-  likes     Like[]
-  author    User      @relation(fields: [authorId], references: [id])
-  tags      Tag[]     @relation("PostTags")
+  id            Int            @id @default(autoincrement())
+  slug          String?        @unique
+  title         String
+  content       String
+  thumbnail     String?
+  published     Boolean
+  authorId      Int
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  comments      Comment[]
+  likes         Like[]
+  bookmarks     Bookmark[]
+  notifications Notification[]
+  author        User           @relation(fields: [authorId], references: [id])
+  tags          Tag[]          @relation("PostTags")
 }
 
 model Comment {
-  id        Int      @id @default(autoincrement())
+  id        Int       @id @default(autoincrement())
   content   String
   postId    Int
   authorId  Int
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  author    User     @relation(fields: [authorId], references: [id])
-  post      Post     @relation(fields: [postId], references: [id])
+  parentId  Int?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  author    User      @relation(fields: [authorId], references: [id])
+  post      Post      @relation(fields: [postId], references: [id])
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentReplies")
 }
 
 model Tag {
@@ -76,6 +84,40 @@ enum FriendshipStatus {
   PENDING
   ACCEPTED
   REJECTED
+}
+
+enum NotificationType {
+  POST_LIKED
+  POST_COMMENTED
+  FRIEND_REQUEST_RECEIVED
+  FRIEND_REQUEST_ACCEPTED
+}
+
+model Notification {
+  id          Int              @id @default(autoincrement())
+  recipientId Int
+  actorId     Int
+  type        NotificationType
+  postId      Int?
+  commentId   Int?
+  isRead      Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+
+  recipient   User  @relation("ReceivedNotifications", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor       User  @relation("SentNotifications", fields: [actorId], references: [id], onDelete: Cascade)
+  post        Post? @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+
+model Bookmark {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  postId    Int
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
 }
 
 model Friendship {

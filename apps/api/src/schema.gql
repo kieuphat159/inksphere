@@ -24,6 +24,9 @@ type CommentEntity {
   content: String!
   post: Post!
   author: User!
+  parentId: Int
+  parent: CommentEntity
+  replies: [CommentEntity!]
   createdAt: DateTime!
 }
 
@@ -51,6 +54,26 @@ type Post {
   tags: [Tag!]!
   comments: CommentEntity!
   _count: Count!
+}
+
+type Notification {
+  id: Int!
+  recipientId: Int!
+  actorId: Int!
+  type: NotificationType!
+  postId: Int
+  commentId: Int
+  isRead: Boolean!
+  createdAt: DateTime!
+  actor: User
+  post: Post
+}
+
+enum NotificationType {
+  POST_LIKED
+  POST_COMMENTED
+  FRIEND_REQUEST_RECEIVED
+  FRIEND_REQUEST_ACCEPTED
 }
 
 type Friendship {
@@ -86,6 +109,14 @@ type AuthPayload {
   accessToken: String!
 }
 
+type Bookmark {
+  id: Int!
+  userId: Int!
+  postId: Int!
+  createdAt: DateTime!
+  post: Post
+}
+
 type Query {
   posts(skip: Float, take: Float): [Post!]!
   postsCount: Int!
@@ -94,15 +125,23 @@ type Query {
   userPostsCount: Int!
   getUserPostsByUsername(username: String!, skip: Int, take: Int): [Post!]!
   getUserPostsCountByUsername(username: String!): Int!
+  searchPosts(query: String!, skip: Int, take: Int): [Post!]!
+  searchPostsCount(query: String!): Int!
+  getPostsByTag(tagName: String!, skip: Int, take: Int): [Post!]!
+  getPostsByTagCount(tagName: String!): Int!
   getUserByUsername(username: String!): User
   getPostComments(postId: Int!, take: Int = 12, skip: Int = 0): [CommentEntity!]!
   postCommentsCount(postId: Int!): Int!
+  myNotifications(skip: Int, take: Int): [Notification!]!
+  unreadNotificationsCount: Int!
   postLikeCount(postId: Int!): Int!
   incomingFriendRequests: [Friendship!]!
   outgoingFriendRequests: [Friendship!]!
   friends: [User!]!
   friendshipStatus(userId: Int!): FriendshipRelation!
   searchUsers(query: String!, take: Int): [User!]!
+  myBookmarks(skip: Int, take: Int): [Bookmark!]!
+  myBookmarksCount: Int!
 }
 
 type Mutation {
@@ -110,7 +149,10 @@ type Mutation {
   updatePost(updatePostInput: UpdatePostInput!): Post!
   deletePost(postId: Int!): Boolean!
   createUser(createUserInput: CreateUserInput!): User!
+  updateUser(updateUserInput: UpdateUserInput!): User!
   createComment(createCommentInput: CreateCommentInput!): CommentEntity!
+  markNotificationRead(notificationId: Int!): Boolean!
+  markAllNotificationsRead: Boolean!
   likePost(postId: Int!): Boolean!
   unlikePost(postId: Int!): Boolean!
   userLikedPost(postId: Int!): Boolean!
@@ -120,6 +162,9 @@ type Mutation {
   cancelFriendRequest(friendshipId: Int!): Boolean!
   removeFriend(friendId: Int!): Boolean!
   signin(signInInput: SignInInput!): AuthPayload!
+  bookmarkPost(postId: Int!): Boolean!
+  removeBookmark(postId: Int!): Boolean!
+  isBookmarked(postId: Int!): Boolean!
 }
 
 input CreatePostInput {
@@ -147,9 +192,19 @@ input CreateUserInput {
   avatar: String
 }
 
+input UpdateUserInput {
+  name: String
+  email: String
+  password: String
+  bio: String
+  avatar: String
+  id: Int!
+}
+
 input CreateCommentInput {
   postId: Int!
   content: String!
+  parentId: Int
 }
 
 input SignInInput {
