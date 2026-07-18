@@ -50,4 +50,16 @@ export class UserService {
       },
     });
   }
+
+  async update(id: number, updateUserInput: UpdateUserInput) {
+    const { id: _, password, ...data } = updateUserInput;
+    const updateData: any = { ...data };
+    if (password) {
+      updateData.password = await hash(password);
+    }
+    return await this.prisma.user.update({
+      where: { id },
+      data: updateData,
+    });
+  }
 }

@@ -1,5 +1,5 @@
 import { InputType, Int, Field } from '@nestjs/graphql';
-import { IsNumber, IsString } from 'class-validator';
+import { IsNumber, IsOptional, IsString } from 'class-validator';
 
 @InputType()
 export class CreateCommentInput {
@@ -10,4 +10,9 @@ export class CreateCommentInput {
   @Field()
   @IsString()
   content!: string;
+
+  @Field(() => Int, { nullable: true })
+  @IsNumber()
+  @IsOptional()
+  parentId?: number;
 }

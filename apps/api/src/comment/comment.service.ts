@@ -1,12 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { CreateCommentInput } from './dto/create-comment.input';
-import { UpdateCommentInput } from './dto/update-comment.input';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { DEFAULT_PAGE_SIZE } from 'src/constant';
+import { NotificationService } from 'src/notification/notification.service';
+import { NotificationType } from 'src/notification/entities/notification.entity';
 
 @Injectable()
 export class CommentService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationService: NotificationService,
+  ) {}
+
   async findOneByPost({
     postId,
     take,
@@ -17,9 +22,17 @@ export class CommentService {
     skip?: number;
   }) {
     return await this.prisma.comment.findMany({
-      where: { postId },
+      where: { postId, parentId: null },
       include: {
         author: true,
+        replies: {
+          include: {
+            author: true,
+          },
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
       },
       orderBy: {
         createdAt: 'desc',
@@ -36,7 +49,7 @@ export class CommentService {
   }
 
   async create(createCommentInput: CreateCommentInput, userId: number) {
-    return await this.prisma.comment.create({
+    const comment = await this.prisma.comment.create({
       data: {
         content: createCommentInput.content,
         post: {
@@ -49,7 +62,47 @@ export class CommentService {
             id: userId,
           },
         },
+        ...(createCommentInput.parentId && {
+          parent: {
+            connect: {
+              id: createCommentInput.parentId,
+            },
+          },
+        }),
       },
     });
+
+    // Notify post author or parent comment author
+    let recipientId: number | null = null;
+
+    if (createCommentInput.parentId) {
+      const parentComment = await this.prisma.comment.findUnique({
+        where: { id: createCommentInput.parentId },
+        select: { authorId: true },
+      });
+      if (parentComment) {
+        recipientId = parentComment.authorId;
+      }
+    } else {
+      const post = await this.prisma.post.findUnique({
+        where: { id: createCommentInput.postId },
+        select: { authorId: true },
+      });
+      if (post) {
+        recipientId = post.authorId;
+      }
+    }
+
+    if (recipientId && recipientId !== userId) {
+      await this.notificationService.create({
+        recipientId,
+        actorId: userId,
+        type: NotificationType.POST_COMMENTED,
+        postId: createCommentInput.postId,
+        commentId: comment.id,
+      });
+    }
+
+    return comment;
   }
 }

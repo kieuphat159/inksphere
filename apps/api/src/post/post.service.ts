@@ -1,4 +1,4 @@
-﻿import { Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { CreatePostInput } from './dto/create-post.input';
 import { UpdatePostInput } from './dto/update-post.input';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -190,7 +190,8 @@ export class PostService {
     userId: number;
     updatePostInput: UpdatePostInput;
   }) {
-    const authorIdMatch = await this.prisma.post.findUnique({
+    console.log("DEBUG: updatePostInput received:", JSON.stringify(updatePostInput), "userId:", userId);
+    const authorIdMatch = await this.prisma.post.findFirst({
       where: { id: updatePostInput.postId, authorId: userId },
     });
 
@@ -231,5 +232,71 @@ export class PostService {
       where: { id: postId },
     });
     return !!result;
+  }
+
+  async searchPosts({ query, skip = 0, take = DEFAULT_PAGE_SIZE }: { query: string; skip?: number; take?: number }) {
+    return await this.prisma.post.findMany({
+      where: {
+        published: true,
+        OR: [
+          { title: { contains: query, mode: 'insensitive' } },
+          { content: { contains: query, mode: 'insensitive' } },
+        ],
+      },
+      include: {
+        author: true,
+        tags: true,
+        _count: { select: { comments: true, likes: true } },
+      },
+      skip,
+      take,
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async searchPostsCount(query: string) {
+    return await this.prisma.post.count({
+      where: {
+        published: true,
+        OR: [
+          { title: { contains: query, mode: 'insensitive' } },
+          { content: { contains: query, mode: 'insensitive' } },
+        ],
+      },
+    });
+  }
+
+  async getPostsByTag({ tagName, skip = 0, take = DEFAULT_PAGE_SIZE }: { tagName: string; skip?: number; take?: number }) {
+    return await this.prisma.post.findMany({
+      where: {
+        published: true,
+        tags: {
+          some: {
+            name: { equals: tagName, mode: 'insensitive' },
+          },
+        },
+      },
+      include: {
+        author: true,
+        tags: true,
+        _count: { select: { comments: true, likes: true } },
+      },
+      skip,
+      take,
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async getPostsByTagCount(tagName: string) {
+    return await this.prisma.post.count({
+      where: {
+        published: true,
+        tags: {
+          some: {
+            name: { equals: tagName, mode: 'insensitive' },
+          },
+        },
+      },
+    });
   }
 }

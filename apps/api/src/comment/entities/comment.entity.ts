@@ -16,6 +16,15 @@ export class CommentEntity {
   @Field(() => User)
   author: User;
 
+  @Field(() => Int, { nullable: true })
+  parentId?: number;
+
+  @Field(() => CommentEntity, { nullable: true })
+  parent?: CommentEntity;
+
+  @Field(() => [CommentEntity], { nullable: true })
+  replies?: CommentEntity[];
+
   @Field()
   createdAt: Date;
 }

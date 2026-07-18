@@ -1,4 +1,4 @@
-﻿import { Resolver, Query, Mutation, Args, Int, Context } from '@nestjs/graphql';
+import { Resolver, Query, Mutation, Args, Int, Context } from '@nestjs/graphql';
 import { PostService } from './post.service';
 import { Post } from './entities/post.entity';
 import { CreatePostInput } from './dto/create-post.input';
@@ -100,5 +100,33 @@ export class PostResolver {
   ) {
     const userId = context.req.user.id;
     return this.postService.deletePost({ userId, postId });
+  }
+
+  @Query(() => [Post])
+  async searchPosts(
+    @Args('query', { type: () => String }) query: string,
+    @Args('skip', { nullable: true, type: () => Int }) skip?: number,
+    @Args('take', { nullable: true, type: () => Int }) take?: number,
+  ) {
+    return this.postService.searchPosts({ query, skip, take });
+  }
+
+  @Query(() => Int)
+  async searchPostsCount(@Args('query', { type: () => String }) query: string) {
+    return this.postService.searchPostsCount(query);
+  }
+
+  @Query(() => [Post])
+  async getPostsByTag(
+    @Args('tagName', { type: () => String }) tagName: string,
+    @Args('skip', { nullable: true, type: () => Int }) skip?: number,
+    @Args('take', { nullable: true, type: () => Int }) take?: number,
+  ) {
+    return this.postService.getPostsByTag({ tagName, skip, take });
+  }
+
+  @Query(() => Int)
+  async getPostsByTagCount(@Args('tagName', { type: () => String }) tagName: string) {
+    return this.postService.getPostsByTagCount(tagName);
   }
 }
