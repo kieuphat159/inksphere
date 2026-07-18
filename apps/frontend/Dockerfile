@@ -1,5 +1,6 @@
 # Stage 1: Build Next.js Frontend
 FROM node:20-alpine AS builder
+RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package*.json ./
 COPY turbo.json ./

@@ -1,10 +1,11 @@
 import { fetchPostById } from "@/lib/actions/postAction";
 import Image from "next/image";
-import SanitizedContent from "./_components/sanitizedContent";
+import PostContent from "@/components/editor/PostContent";
 import Comments from "./_components/comments";
 import { getSession } from "@/lib/session";
 import Like from "./_components/like";
 import AuthorFriendAction from "./_components/authorFriendAction";
+import BookmarkButton from "@/components/ui/bookmarkButton";
 
 type Props = {
     params: {
@@ -38,10 +39,13 @@ const PostPage = async ({ params }: Props) => {
                     className="object-cover"
                 />
             </div>
-            <SanitizedContent content={post.content} className="editorial-content mt-8" />
+            <PostContent html={post.content} className="editorial-content mt-8" />
             <div className="w-full h-[1px] bg-border my-10" />
             <div className="flex flex-col gap-8">
-                <Like postId={post.id} user={session?.user} />  
+                <div className="flex items-center gap-3">
+                    <Like postId={post.id} user={session?.user} />  
+                    <BookmarkButton postId={post.id} user={session?.user} className="h-[38px] px-3.5" />
+                </div>
                 <Comments postId={post.id} user={session?.user} />
             </div>
         </main>

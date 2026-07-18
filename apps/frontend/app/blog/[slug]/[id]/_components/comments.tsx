@@ -38,7 +38,15 @@ const Comments = ({ postId, user }: Props) => {
                     : data?.comments.length === 0 ? (
                         <p className="font-serif text-sm italic text-muted-foreground text-center py-6">No comments yet. Be the first to leave one.</p>
                     ) : (
-                        data?.comments.map((comment) => <CommentCard comment={comment} key={comment.id} />)
+                        data?.comments.map((comment) => (
+                            <CommentCard
+                                comment={comment}
+                                key={comment.id}
+                                postId={postId}
+                                user={user}
+                                refetch={refetch}
+                            />
+                        ))
                     )
                 }
             </div>

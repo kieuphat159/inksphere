@@ -2,12 +2,17 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import SubmitButton from "@/components/submitButton";
 import { PostFormState } from "@/lib/types/formState";
-import { toast } from "sonner"
+import { toast } from "sonner";
+import dynamic from "next/dynamic";
+
+const TiptapEditor = dynamic(() => import("@/components/editor/TiptapEditor"), {
+  ssr: false,
+  loading: () => <div className="min-h-[350px] w-full border border-border bg-muted/15 rounded-sm animate-pulse flex items-center justify-center font-mono text-xs uppercase tracking-widest text-muted-foreground">Loading Editor...</div>,
+});
 
 type Props = {
     state: PostFormState;
@@ -18,6 +23,8 @@ type Props = {
 const UpsertPostForm = ({ state, formAction, postId }: Props) => {
     const [imageUrl, setImageUrl] = useState("");
     const [thumbnailRemoved, setThumbnailRemoved] = useState(false);
+    const [content, setContent] = useState(state?.data?.content || "");
+
     useEffect(() => {
         if (!state?.message) return;
 
@@ -27,6 +34,13 @@ const UpsertPostForm = ({ state, formAction, postId }: Props) => {
             toast.error(state.message)
         }
     }, [state])
+
+    useEffect(() => {
+        if (state?.data?.content) {
+            setContent(state.data.content);
+        }
+    }, [state?.data?.content]);
+
     return (
         <form className="flex flex-col gap-6" action={formAction}>
             {postId !== undefined && <input type="hidden" name="postId" value={postId} />}
@@ -41,7 +55,8 @@ const UpsertPostForm = ({ state, formAction, postId }: Props) => {
 
             <div className="flex flex-col gap-1.5">
                 <Label htmlFor="content" className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Content</Label>
-                <Textarea id="content" name="content" required placeholder="Enter post content" rows={8} className="border-border focus-visible:ring-foreground/10 font-serif leading-relaxed" defaultValue={state?.data?.content} />
+                <TiptapEditor content={content} onChange={setContent} />
+                <input type="hidden" name="content" value={content} />
                 {state?.errors?.content && (
                     <p className="text-red-600 font-mono text-[10px] uppercase tracking-wider mt-1">{state.errors.content}</p>
                 )}
