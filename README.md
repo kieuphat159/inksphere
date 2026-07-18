@@ -65,18 +65,24 @@ This repository is built as a personal content platform enriched with social int
 
 - Home page displaying posts with pagination.
 - Post detail page with comments and likes.
-- Sign-in, sign-up, and user profile pages.
+- **Rich Text Editor (Tiptap):** Dynamic client-side rich text editor supporting formatting, headings, lists, inline code, code blocks, links, and image embedding.
+- **Search & Discovery:** Debounced global search bar in navbar with `Ctrl + K` focus shortcut and autocomplete dropdown, full search result page (`/search`), and tag filtering route (`/tags/[tag]`).
+- **Real-Time Notification Bell:** Navbar dropdown bell showing real-time notification alerts (Sonner Toast) and badge counts for likes, comments, and friend requests.
+- **Nested Comments:** 2-level inline replies showing replies visually nested under parent comments.
+- **Bookmarks:** Fast save/unsave buttons for posts and a dedicated management center (`/user/bookmarks`).
+- Sign-in, sign-up, and user profile pages, plus a detailed Profile Settings dashboard (`/user/settings`) supporting direct client-side Supabase avatar uploads.
 - Create, update, and delete posts.
 - Friends page for managing friendships.
 - Chat area with sidebar, threads, and call panel.
 
 ### Backend
 
-- GraphQL schema for users, posts, comments, tags, likes, and friendships.
+- GraphQL schema for users, posts, comments, tags, likes, friendships, bookmarks, and notifications.
 - Auth module with JWT and Google OAuth.
-- Prisma schema for PostgreSQL.
+- Prisma schema for PostgreSQL including self-relations for nested comment replies.
 - Chat module over WebSocket.
 - Call module for real-time signaling.
+- **Notification Gateway:** Custom Socket.IO namespace gateway for push notifications.
 - Data seeding via Prisma seed scripts.
 
 ## System Requirements
@@ -216,7 +222,7 @@ The platform is fully containerized and configured for local deployment via Dock
 npm run lint
 ```
 
-The backend workspace (`api`) provides automated testing pipelines:
+The backend workspace (`api`) provides automated unit and integration tests:
 
 ```bash
 # Unit tests
@@ -227,6 +233,13 @@ npm run test:e2e --workspace=api
 
 # Test coverage
 npm run test:cov --workspace=api
+```
+
+The frontend workspace (`frontend`) provides automated Playwright end-to-end tests:
+
+```bash
+# End-to-end user features tests (Playwright)
+npm run test:e2e --workspace=frontend
 ```
 
 ## Security & Performance Optimizations
