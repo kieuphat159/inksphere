@@ -1,6 +1,6 @@
-﻿"use server";
+"use server";
 
-import { fetchGraphQL } from "@/lib/fetchGraphQL";
+import { fetchGraphQL, authFetchGraphQL, handleActionError } from "@/lib/fetchGraphQL";
 import { gql } from "graphql-tag";
 import { print } from "graphql";
 import { User, Post } from "@/lib/types/modelTypes";
@@ -86,5 +86,28 @@ export async function fetchUserPostsByUsername({
             posts: [],
             totalPosts: 0,
         };
+    }
+}
+
+const UPDATE_USER = gql`
+    mutation updateUser($input: UpdateUserInput!) {
+        updateUser(updateUserInput: $input) {
+            id name email avatar bio
+        }
+    }
+`;
+
+export async function updateUserAction(formData: FormData) {
+    const name = formData.get("name") as string;
+    const bio = formData.get("bio") as string;
+    const avatar = formData.get("avatar") as string;
+
+    try {
+        const data = await authFetchGraphQL(print(UPDATE_USER), {
+            input: { name, bio, avatar }
+        });
+        return { ok: true, user: data?.updateUser };
+    } catch (error) {
+        return handleActionError(error, "Failed to update user:", { ok: false, error: "Failed to update profile details" });
     }
 }

@@ -68,9 +68,20 @@ export const GET_POST_COMMENTS = gql`
             id
             content
             createdAt
+            parentId
             author {
                 name
                 avatar
+            }
+            replies {
+                id
+                content
+                createdAt
+                parentId
+                author {
+                    name
+                    avatar
+                }
             }
         }
 
@@ -246,5 +257,96 @@ export const CANCEL_FRIEND_REQUEST_MUTATION = gql`
 export const REMOVE_FRIEND_MUTATION = gql`
     mutation removeFriend($friendId: Int!) {
         removeFriend(friendId: $friendId)
+    }
+`;
+
+export const SEARCH_POSTS = gql`
+    query searchPosts($query: String!, $skip: Int, $take: Int) {
+        searchPosts(query: $query, skip: $skip, take: $take) {
+            id title slug thumbnail content createdAt
+            author { id name avatar }
+            _count { comments likes }
+        }
+        searchPostsCount(query: $query)
+    }
+`;
+
+export const GET_POSTS_BY_TAG = gql`
+    query getPostsByTag($tagName: String!, $skip: Int, $take: Int) {
+        getPostsByTag(tagName: $tagName, skip: $skip, take: $take) {
+            id title slug thumbnail content createdAt
+            author { id name avatar }
+            _count { comments likes }
+        }
+        getPostsByTagCount(tagName: $tagName)
+    }
+`;
+
+export const MY_NOTIFICATIONS = gql`
+    query myNotifications($skip: Int, $take: Int) {
+        myNotifications(skip: $skip, take: $take) {
+            id recipientId actorId type postId commentId isRead createdAt
+            actor { id name avatar }
+            post { id title slug }
+        }
+    }
+`;
+
+export const UNREAD_NOTIFICATIONS_COUNT = gql`
+    query unreadNotificationsCount {
+        unreadNotificationsCount
+    }
+`;
+
+export const MARK_NOTIFICATION_READ = gql`
+    mutation markNotificationRead($notificationId: Int!) {
+        markNotificationRead(notificationId: $notificationId)
+    }
+`;
+
+export const MARK_ALL_NOTIFICATIONS_READ = gql`
+    mutation markAllNotificationsRead {
+        markAllNotificationsRead
+    }
+`;
+
+export const BOOKMARK_POST = gql`
+    mutation bookmarkPost($postId: Int!) {
+        bookmarkPost(postId: $postId)
+    }
+`;
+
+export const REMOVE_BOOKMARK = gql`
+    mutation removeBookmark($postId: Int!) {
+        removeBookmark(postId: $postId)
+    }
+`;
+
+export const IS_BOOKMARKED = gql`
+    mutation isBookmarked($postId: Int!) {
+        isBookmarked(postId: $postId)
+    }
+`;
+
+export const MY_BOOKMARKS = gql`
+    query myBookmarks($skip: Int, $take: Int) {
+        myBookmarks(skip: $skip, take: $take) {
+            id
+            createdAt
+            post {
+                id title slug thumbnail content createdAt
+                author { id name avatar }
+                _count { comments likes }
+            }
+        }
+        myBookmarksCount
+    }
+`;
+
+export const UPDATE_USER = gql`
+    mutation updateUser($input: UpdateUserInput!) {
+        updateUser(updateUserInput: $input) {
+            id name email avatar bio
+        }
     }
 `;

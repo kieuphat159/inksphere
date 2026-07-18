@@ -30,3 +30,11 @@ export const authFetchGraphQL = async (query: string, variables = {}): Promise<a
         throw err;
     }
 }
+
+export function handleActionError(error: any, logMessage: string, fallbackValue: any = null) {
+    if (error && typeof error === 'object' && 'digest' in error && String(error.digest).startsWith('NEXT_REDIRECT')) {
+        throw error;
+    }
+    console.error(logMessage, error);
+    return fallbackValue;
+}

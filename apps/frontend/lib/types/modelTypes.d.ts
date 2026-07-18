@@ -37,6 +37,8 @@ export type CommentEntity = {
     updatedAt: Date;
     author: User;
     post: Post;
+    parentId?: number;
+    replies?: CommentEntity[];
 }
 
 export type FriendshipStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED';
@@ -58,4 +60,17 @@ export type Friendship = {
     createdAt: Date;
     requester: User;
     receiver: User;
+}
+
+export type SessionUser = {
+    id?: string;
+    name?: string;
+    avatar?: string;
+    bio?: string;
+    accessToken?: string;
+}
+
+export type Session = {
+    user: SessionUser;
+    accessToken: string;
 }

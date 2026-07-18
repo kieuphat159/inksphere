@@ -6,7 +6,8 @@ import {
     GET_POST, GET_POST_BY_ID, 
     GET_USER_POSTS, 
     UPDATE_POST_MUTATION,
-    DELETE_POST_MUTATION
+    DELETE_POST_MUTATION,
+    GET_POSTS_BY_TAG
 } from "@/lib/gqlQueries";
 import { print } from "graphql";
 import { Post } from "../types/modelTypes";
@@ -90,7 +91,9 @@ export async function updatePost(state: PostFormState, formData: FormData): Prom
         }
     }
 
+    console.log("DEBUG CLIENT: formData entries:", Array.from(formData.entries()));
     const postId = formData.get("postId");
+    console.log("DEBUG CLIENT: postId found:", postId);
     const existingThumbnail = formData.get("existingThumbnail") as string | null;
     const removeThumbnail = formData.get("removeThumbnail") === "on";
 
@@ -145,4 +148,26 @@ export async function deletePostAction(
         redirect("/user/posts");
     }
     return { message: "Failed to delete post", ok: false };
+}
+
+export async function fetchPostsByTag({
+    tagName,
+    page = 1,
+    pageSize = 8
+}: {
+    tagName: string;
+    page?: number;
+    pageSize?: number;
+}) {
+    const { skip, take } = transformTakeSkip({ page, pageSize });
+    try {
+        const data = await fetchGraphQL(print(GET_POSTS_BY_TAG), { tagName, skip, take });
+        return {
+            posts: (data?.getPostsByTag ?? []) as Post[],
+            totalPosts: (data?.getPostsByTagCount ?? 0) as number
+        };
+    } catch (error) {
+        console.error("Failed to fetch posts by tag:", error);
+        return { posts: [], totalPosts: 0 };
+    }
 }

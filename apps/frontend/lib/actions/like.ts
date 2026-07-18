@@ -1,6 +1,6 @@
 "use server"
 
-import { authFetchGraphQL, fetchGraphQL } from "../fetchGraphQL"
+import { authFetchGraphQL, fetchGraphQL, handleActionError } from "../fetchGraphQL"
 import { UNLIKE_POST_MUTATION, POST_LIKE_COUNT_QUERY, USER_LIKED_POST_MUTATION, LIKE_POST_MUTATION } from "../gqlQueries"
 import { print } from "graphql"
 import { getSession } from "../session"
@@ -16,6 +16,7 @@ export async function getPostLikeData(postId: number) {
             const likedData = await authFetchGraphQL(print(USER_LIKED_POST_MUTATION), { postId });
             userLikedPost = likedData.userLikedPost as boolean;
         } catch (error) {
+            handleActionError(error, "Failed to get user liked status:", null);
             userLikedPost = false;
         }
     }

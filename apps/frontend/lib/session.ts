@@ -1,4 +1,4 @@
-import { jwtVerify, SignJWT } from "jose"
+import { jwtVerify, SignJWT } from "jose";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -6,12 +6,13 @@ export type SessionUser = {
     id?: string;
     name?: string;
     avatar?: string;
-}
+    bio?: string;
+};
 
 export type Session = {
     user: SessionUser;
     accessToken: string;
-}
+};
 
 const secretKey = process.env.SESSION_SECRET_KEY!;
 const encodeKey = new TextEncoder().encode(secretKey);
@@ -31,7 +32,7 @@ export async function createSession(payload: Session) {
         expires: expiredAt,
         sameSite: "lax",
         path: "/",
-    })
+    });
 }
 
 export async function getSession() {
