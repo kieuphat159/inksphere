@@ -19,6 +19,8 @@ import { RedisModule } from './redis/redis.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { GqlThrottlerGuard } from './common/guards/gql-throttler.guard';
+import { NotificationModule } from './notification/notification.module';
+import { BookmarkModule } from './bookmark/bookmark.module';
 
 @Module({
   imports: [
@@ -39,6 +41,8 @@ import { GqlThrottlerGuard } from './common/guards/gql-throttler.guard';
     ChatModule,
     CallModule,
     RedisModule,
+    NotificationModule,
+    BookmarkModule,
     ThrottlerModule.forRoot([{
       ttl: 60000,
       limit: 100,

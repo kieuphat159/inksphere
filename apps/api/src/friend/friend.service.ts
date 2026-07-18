@@ -7,10 +7,15 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { FriendshipStatus as PrismaFriendshipStatus } from '@prisma/client';
 import { FriendshipRelationStatus } from './enums/friendship-relation-status.enum';
+import { NotificationService } from 'src/notification/notification.service';
+import { NotificationType } from 'src/notification/entities/notification.entity';
 
 @Injectable()
 export class FriendService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   async sendFriendRequest({
     requesterId,
@@ -33,6 +38,7 @@ export class FriendService {
     }
 
     const existing = await this.findFriendshipBetween(requesterId, receiverId);
+    let friendship;
 
     if (existing) {
       if (existing.status === PrismaFriendshipStatus.ACCEPTED) {
@@ -42,7 +48,7 @@ export class FriendService {
         throw new BadRequestException('Friend request already pending');
       }
       if (existing.status === PrismaFriendshipStatus.REJECTED) {
-        return this.prisma.friendship.update({
+        friendship = await this.prisma.friendship.update({
           where: { id: existing.id },
           data: {
             requesterId,
@@ -52,16 +58,27 @@ export class FriendService {
           include: { requester: true, receiver: true },
         });
       }
+    } else {
+      friendship = await this.prisma.friendship.create({
+        data: {
+          requesterId,
+          receiverId,
+          status: PrismaFriendshipStatus.PENDING,
+        },
+        include: { requester: true, receiver: true },
+      });
     }
 
-    return this.prisma.friendship.create({
-      data: {
-        requesterId,
-        receiverId,
-        status: PrismaFriendshipStatus.PENDING,
-      },
-      include: { requester: true, receiver: true },
-    });
+    // Trigger notification
+    if (friendship) {
+      await this.notificationService.create({
+        recipientId: receiverId,
+        actorId: requesterId,
+        type: NotificationType.FRIEND_REQUEST_RECEIVED,
+      });
+    }
+
+    return friendship;
   }
 
   async acceptFriendRequest({
@@ -80,11 +97,20 @@ export class FriendService {
       throw new BadRequestException('This friend request is no longer pending');
     }
 
-    return this.prisma.friendship.update({
+    const updated = await this.prisma.friendship.update({
       where: { id: friendshipId },
       data: { status: PrismaFriendshipStatus.ACCEPTED },
       include: { requester: true, receiver: true },
     });
+
+    // Trigger notification
+    await this.notificationService.create({
+      recipientId: updated.requesterId,
+      actorId: userId,
+      type: NotificationType.FRIEND_REQUEST_ACCEPTED,
+    });
+
+    return updated;
   }
 
   async rejectFriendRequest({

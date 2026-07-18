@@ -2,19 +2,41 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateLikeInput } from './dto/create-like.input';
 import { UpdateLikeInput } from './dto/update-like.input';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { NotificationService } from 'src/notification/notification.service';
+import { NotificationType } from 'src/notification/entities/notification.entity';
 
 @Injectable()
 export class LikeService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   async likePost({ postId, userId }: { postId: number; userId: any }) {
     try {
-      return !!(await this.prisma.like.create({
+      const parsedUserId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
+      const like = await this.prisma.like.create({
         data: {
           postId,
-          userId,
+          userId: parsedUserId,
         },
-      }));
+      });
+
+      const post = await this.prisma.post.findUnique({
+        where: { id: postId },
+        select: { authorId: true },
+      });
+
+      if (post && post.authorId !== parsedUserId) {
+        await this.notificationService.create({
+          recipientId: post.authorId,
+          actorId: parsedUserId,
+          type: NotificationType.POST_LIKED,
+          postId,
+        });
+      }
+
+      return !!like;
     } catch (error) {
       throw new BadRequestException('Failed to like the post');
     }
