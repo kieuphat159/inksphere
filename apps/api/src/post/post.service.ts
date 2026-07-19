@@ -3,10 +3,29 @@ import { CreatePostInput } from './dto/create-post.input';
 import { UpdatePostInput } from './dto/update-post.input';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { DEFAULT_PAGE_SIZE } from 'src/constant';
+import { RedisService } from 'src/redis/redis.service';
 
 @Injectable()
 export class PostService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private redisService: RedisService,
+  ) {}
+
+  private async getCacheVersion(): Promise<string> {
+    const version = await this.redisService.get('posts:cache_version');
+    if (!version) {
+      const initialVersion = Date.now().toString();
+      await this.redisService.set('posts:cache_version', initialVersion);
+      return initialVersion;
+    }
+    return version;
+  }
+
+  private async incrementCacheVersion(): Promise<void> {
+    const newVersion = Date.now().toString();
+    await this.redisService.set('posts:cache_version', newVersion);
+  }
 
   async findAll({
     skip = 0,
@@ -15,7 +34,14 @@ export class PostService {
     skip?: number;
     take?: number;
   }) {
-    return await this.prisma.post.findMany({
+    const version = await this.getCacheVersion();
+    const cacheKey = `posts:feed:${version}:${skip}:${take}`;
+    const cached = await this.redisService.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
+    const posts = await this.prisma.post.findMany({
       skip,
       take,
       orderBy: {
@@ -31,6 +57,9 @@ export class PostService {
         },
       },
     });
+
+    await this.redisService.set(cacheKey, JSON.stringify(posts), 300);
+    return posts;
   }
 
   async count() {
@@ -165,7 +194,7 @@ export class PostService {
     authorId: number;
   }) {
     const { tags, ...rest } = createPostInput;
-    return await this.prisma.post.create({
+    const post = await this.prisma.post.create({
       data: {
         ...rest,
         author: {
@@ -181,6 +210,8 @@ export class PostService {
         },
       },
     });
+    await this.incrementCacheVersion();
+    return post;
   }
 
   async update({
@@ -204,7 +235,7 @@ export class PostService {
       throw new Error('You are not authorized to update this post.');
     }
     const { postId, ...data } = updatePostInput;
-    return await this.prisma.post.update({
+    const updated = await this.prisma.post.update({
       where: { id: postId },
       data: {
         ...data,
@@ -217,6 +248,8 @@ export class PostService {
         },
       },
     });
+    await this.incrementCacheVersion();
+    return updated;
   }
 
   async deletePost({ userId, postId }: { userId: number; postId: number }) {
@@ -236,6 +269,7 @@ export class PostService {
     const result = await this.prisma.post.delete({
       where: { id: postId },
     });
+    await this.incrementCacheVersion();
     return !!result;
   }
 
