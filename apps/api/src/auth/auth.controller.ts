@@ -1,4 +1,12 @@
-import { Controller, UseGuards, Request, Res, Get, Post, Body } from '@nestjs/common';
+import {
+  Controller,
+  UseGuards,
+  Request,
+  Res,
+  Get,
+  Post,
+  Body,
+} from '@nestjs/common';
 import { GoogleAuthGuard } from './guards/google-auth/google-auth.guard';
 import { AuthService } from './auth.service';
 import { Response } from 'express';
@@ -20,9 +28,10 @@ export class AuthController {
     const userData = await this.authService.login(req.user);
     const code = await this.authService.generateTempOAuthCode(userData);
 
-    res.redirect(
-      `${FRONTEND_URL}/api/auth/google/callback?code=${code}`,
-    );
+    const baseUrl = FRONTEND_URL.endsWith('/')
+      ? FRONTEND_URL.slice(0, -1)
+      : FRONTEND_URL;
+    res.redirect(`${baseUrl}/api/auth/google/callback?code=${code}`);
   }
 
   @Post('google/token')

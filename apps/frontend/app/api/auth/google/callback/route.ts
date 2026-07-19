@@ -3,8 +3,7 @@ import { createSession } from "@/lib/session";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
-    const { searchParams } = new URL(req.url);
-    const code = searchParams.get("code");
+    const code = req.nextUrl.searchParams.get("code");
 
     if (!code) {
         return NextResponse.json(
@@ -32,7 +31,7 @@ export async function GET(req: NextRequest) {
     const userData = await tokenRes.json();
     const { id: userId, name, avatar, accessToken } = userData;
 
-    if (!accessToken || !userId || !name || !avatar) {
+    if (!accessToken || !userId || !name) {
         return NextResponse.json(
             { message: "Google authentication failed: Invalid user payload" },
             { status: 400 }
@@ -62,5 +61,5 @@ export async function GET(req: NextRequest) {
         accessToken,
     });
 
-    return NextResponse.redirect(new URL("/", req.url));
+    return NextResponse.redirect(new URL("/", req.nextUrl));
 }

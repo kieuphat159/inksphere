@@ -10,7 +10,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use(
     helmet({
-      contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false,
+      contentSecurityPolicy:
+        process.env.NODE_ENV === 'production' ? undefined : false,
       crossOriginEmbedderPolicy: false,
     }),
   );
@@ -26,11 +27,16 @@ async function bootstrap() {
 
   // Connect to Redis for WebSocket adapter
   const redisIoAdapter = new RedisIoAdapter(app);
+  const redisUrl = process.env.REDIS_URL;
   const redisHost = process.env.REDIS_HOST ?? 'localhost';
   const redisPort = Number(process.env.REDIS_PORT ?? 6379);
 
   try {
-    await redisIoAdapter.connectToRedis(redisHost, redisPort);
+    if (redisUrl) {
+      await redisIoAdapter.connectToRedis(redisUrl);
+    } else {
+      await redisIoAdapter.connectToRedis(redisHost, redisPort);
+    }
     app.useWebSocketAdapter(redisIoAdapter);
 
     console.log('Successfully connected to Redis for Socket.IO adapter');

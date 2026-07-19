@@ -6,18 +6,28 @@ import Redis from 'ioredis';
 export class RedisIoAdapter extends IoAdapter {
   private adapterConstructor: any;
 
-  async connectToRedis(host: string, port: number): Promise<void> {
-    const pubClient = new Redis({
-      host,
-      port,
-      lazyConnect: true,
-      retryStrategy(times) {
-        if (times > 3) {
-          return null;
-        }
-        return Math.min(times * 100, 1000);
-      },
-    });
+  async connectToRedis(hostOrUrl: string, port?: number): Promise<void> {
+    let pubClient: Redis;
+    const retryStrategy = (times: number) => {
+      if (times > 3) {
+        return null;
+      }
+      return Math.min(times * 100, 1000);
+    };
+
+    if (hostOrUrl.startsWith('redis://') || hostOrUrl.startsWith('rediss://')) {
+      pubClient = new Redis(hostOrUrl, {
+        lazyConnect: true,
+        retryStrategy,
+      });
+    } else {
+      pubClient = new Redis({
+        host: hostOrUrl,
+        port: port || 6379,
+        lazyConnect: true,
+        retryStrategy,
+      });
+    }
     const subClient = pubClient.duplicate();
 
     await Promise.all([pubClient.connect(), subClient.connect()]);

@@ -126,7 +126,9 @@ export class PostResolver {
   }
 
   @Query(() => Int)
-  async getPostsByTagCount(@Args('tagName', { type: () => String }) tagName: string) {
+  async getPostsByTagCount(
+    @Args('tagName', { type: () => String }) tagName: string,
+  ) {
     return this.postService.getPostsByTagCount(tagName);
   }
 }

@@ -46,7 +46,11 @@ export class BookmarkResolver {
     @Args('take', { nullable: true, type: () => Int }) take?: number,
   ) {
     const userId = context.req.user.id;
-    return this.bookmarkService.myBookmarks({ userId, skip: skip ?? 0, take: take ?? 10 });
+    return this.bookmarkService.myBookmarks({
+      userId,
+      skip: skip ?? 0,
+      take: take ?? 10,
+    });
   }
 
   @UseGuards(JwtAuthGuard)

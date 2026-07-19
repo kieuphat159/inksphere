@@ -21,7 +21,7 @@ describe('NotificationService', () => {
     gatewayMock = {
       sendToUser: jest.fn(),
     };
-    notificationService = new NotificationService(prismaMock as any, gatewayMock as any);
+    notificationService = new NotificationService(prismaMock, gatewayMock);
   });
 
   describe('create', () => {
@@ -52,7 +52,10 @@ describe('NotificationService', () => {
         },
       });
 
-      expect(gatewayMock.sendToUser).toHaveBeenCalledWith(input.recipientId, createdNotification);
+      expect(gatewayMock.sendToUser).toHaveBeenCalledWith(
+        input.recipientId,
+        createdNotification,
+      );
       expect(result).toEqual(createdNotification);
     });
 

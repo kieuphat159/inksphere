@@ -15,13 +15,16 @@ describe('BookmarkService', () => {
         count: jest.fn(),
       },
     };
-    bookmarkService = new BookmarkService(prismaMock as any);
+    bookmarkService = new BookmarkService(prismaMock);
   });
 
   describe('bookmarkPost', () => {
     it('should successfully create bookmark and return true', async () => {
       prismaMock.bookmark.create.mockResolvedValue({ id: 1 });
-      const result = await bookmarkService.bookmarkPost({ userId: 1, postId: 2 });
+      const result = await bookmarkService.bookmarkPost({
+        userId: 1,
+        postId: 2,
+      });
       expect(prismaMock.bookmark.create).toHaveBeenCalledWith({
         data: { userId: 1, postId: 2 },
       });
@@ -39,7 +42,10 @@ describe('BookmarkService', () => {
   describe('removeBookmark', () => {
     it('should successfully delete bookmark and return true', async () => {
       prismaMock.bookmark.delete.mockResolvedValue({ id: 1 });
-      const result = await bookmarkService.removeBookmark({ userId: 1, postId: 2 });
+      const result = await bookmarkService.removeBookmark({
+        userId: 1,
+        postId: 2,
+      });
       expect(prismaMock.bookmark.delete).toHaveBeenCalledWith({
         where: { userId_postId: { userId: 1, postId: 2 } },
       });
@@ -57,7 +63,10 @@ describe('BookmarkService', () => {
   describe('isBookmarked', () => {
     it('should return true if bookmark exists', async () => {
       prismaMock.bookmark.findUnique.mockResolvedValue({ id: 1 });
-      const result = await bookmarkService.isBookmarked({ userId: 1, postId: 2 });
+      const result = await bookmarkService.isBookmarked({
+        userId: 1,
+        postId: 2,
+      });
       expect(prismaMock.bookmark.findUnique).toHaveBeenCalledWith({
         where: { userId_postId: { userId: 1, postId: 2 } },
       });
@@ -66,7 +75,10 @@ describe('BookmarkService', () => {
 
     it('should return false if bookmark does not exist', async () => {
       prismaMock.bookmark.findUnique.mockResolvedValue(null);
-      const result = await bookmarkService.isBookmarked({ userId: 1, postId: 2 });
+      const result = await bookmarkService.isBookmarked({
+        userId: 1,
+        postId: 2,
+      });
       expect(result).toBe(false);
     });
   });
@@ -76,7 +88,11 @@ describe('BookmarkService', () => {
       const expectedBookmarks = [{ id: 1, post: {} }];
       prismaMock.bookmark.findMany.mockResolvedValue(expectedBookmarks);
 
-      const result = await bookmarkService.myBookmarks({ userId: 1, skip: 0, take: 5 });
+      const result = await bookmarkService.myBookmarks({
+        userId: 1,
+        skip: 0,
+        take: 5,
+      });
 
       expect(prismaMock.bookmark.findMany).toHaveBeenCalledWith({
         where: { userId: 1 },

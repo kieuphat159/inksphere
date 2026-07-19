@@ -14,7 +14,8 @@ export class LikeService {
 
   async likePost({ postId, userId }: { postId: number; userId: any }) {
     try {
-      const parsedUserId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
+      const parsedUserId =
+        typeof userId === 'string' ? parseInt(userId, 10) : userId;
       const like = await this.prisma.like.create({
         data: {
           postId,

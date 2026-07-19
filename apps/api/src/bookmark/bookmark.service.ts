@@ -32,7 +32,15 @@ export class BookmarkService {
     return !!bookmark;
   }
 
-  async myBookmarks({ userId, skip = 0, take = 10 }: { userId: number; skip?: number; take?: number }) {
+  async myBookmarks({
+    userId,
+    skip = 0,
+    take = 10,
+  }: {
+    userId: number;
+    skip?: number;
+    take?: number;
+  }) {
     return await this.prisma.bookmark.findMany({
       where: { userId },
       include: {

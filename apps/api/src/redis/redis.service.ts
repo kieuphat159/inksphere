@@ -9,20 +9,29 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   constructor(private readonly configService: ConfigService) {}
 
   onModuleInit() {
-    const host = this.configService.get<string>('REDIS_HOST', 'localhost');
-    const port = this.configService.get<number>('REDIS_PORT', 6379);
+    const redisUrl = this.configService.get<string>('REDIS_URL');
 
-    this.client = new Redis({
-      host,
-      port,
+    const options = {
       maxRetriesPerRequest: null,
-      retryStrategy(times) {
+      retryStrategy(times: number) {
         if (times > 3) {
           return null; // Dừng thử kết nối lại
         }
         return Math.min(times * 100, 1000);
       },
-    });
+    };
+
+    if (redisUrl) {
+      this.client = new Redis(redisUrl, options);
+    } else {
+      const host = this.configService.get<string>('REDIS_HOST', 'localhost');
+      const port = this.configService.get<number>('REDIS_PORT', 6379);
+      this.client = new Redis({
+        host,
+        port,
+        ...options,
+      });
+    }
 
     this.client.on('error', (err) => {
       // Log connection failures without crashing NestJS start

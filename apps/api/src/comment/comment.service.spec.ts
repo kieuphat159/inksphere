@@ -24,7 +24,7 @@ describe('CommentService', () => {
       create: jest.fn(),
     };
 
-    commentService = new CommentService(prismaMock as any, notificationServiceMock as any);
+    commentService = new CommentService(prismaMock, notificationServiceMock);
   });
 
   describe('findOneByPost', () => {
@@ -32,9 +32,7 @@ describe('CommentService', () => {
       const postId = 1;
       const skip = 0;
       const take = 10;
-      const expectedComments = [
-        { id: 1, content: 'Comment 1', replies: [] },
-      ];
+      const expectedComments = [{ id: 1, content: 'Comment 1', replies: [] }];
 
       prismaMock.comment.findMany.mockResolvedValue(expectedComments);
 
@@ -85,7 +83,12 @@ describe('CommentService', () => {
         postId: 1,
         content: 'Nice post!',
       };
-      const createdComment = { id: 100, content: 'Nice post!', authorId: userId, postId: 1 };
+      const createdComment = {
+        id: 100,
+        content: 'Nice post!',
+        authorId: userId,
+        postId: 1,
+      };
 
       prismaMock.comment.create.mockResolvedValue(createdComment);
       prismaMock.post.findUnique.mockResolvedValue({ authorId: postAuthorId });
@@ -124,10 +127,18 @@ describe('CommentService', () => {
         content: 'Thank you!',
         parentId: 50,
       };
-      const createdComment = { id: 101, content: 'Thank you!', authorId: userId, postId: 1, parentId: 50 };
+      const createdComment = {
+        id: 101,
+        content: 'Thank you!',
+        authorId: userId,
+        postId: 1,
+        parentId: 50,
+      };
 
       prismaMock.comment.create.mockResolvedValue(createdComment);
-      prismaMock.comment.findUnique.mockResolvedValue({ authorId: parentCommentAuthorId });
+      prismaMock.comment.findUnique.mockResolvedValue({
+        authorId: parentCommentAuthorId,
+      });
 
       const result = await commentService.create(input, userId);
 
@@ -162,7 +173,12 @@ describe('CommentService', () => {
         postId: 1,
         content: 'Self comment',
       };
-      const createdComment = { id: 102, content: 'Self comment', authorId: userId, postId: 1 };
+      const createdComment = {
+        id: 102,
+        content: 'Self comment',
+        authorId: userId,
+        postId: 1,
+      };
 
       prismaMock.comment.create.mockResolvedValue(createdComment);
       prismaMock.post.findUnique.mockResolvedValue({ authorId: userId }); // Self comment

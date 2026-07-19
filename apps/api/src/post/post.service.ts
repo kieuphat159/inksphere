@@ -190,7 +190,12 @@ export class PostService {
     userId: number;
     updatePostInput: UpdatePostInput;
   }) {
-    console.log("DEBUG: updatePostInput received:", JSON.stringify(updatePostInput), "userId:", userId);
+    console.log(
+      'DEBUG: updatePostInput received:',
+      JSON.stringify(updatePostInput),
+      'userId:',
+      userId,
+    );
     const authorIdMatch = await this.prisma.post.findFirst({
       where: { id: updatePostInput.postId, authorId: userId },
     });
@@ -234,7 +239,15 @@ export class PostService {
     return !!result;
   }
 
-  async searchPosts({ query, skip = 0, take = DEFAULT_PAGE_SIZE }: { query: string; skip?: number; take?: number }) {
+  async searchPosts({
+    query,
+    skip = 0,
+    take = DEFAULT_PAGE_SIZE,
+  }: {
+    query: string;
+    skip?: number;
+    take?: number;
+  }) {
     return await this.prisma.post.findMany({
       where: {
         published: true,
@@ -266,7 +279,15 @@ export class PostService {
     });
   }
 
-  async getPostsByTag({ tagName, skip = 0, take = DEFAULT_PAGE_SIZE }: { tagName: string; skip?: number; take?: number }) {
+  async getPostsByTag({
+    tagName,
+    skip = 0,
+    take = DEFAULT_PAGE_SIZE,
+  }: {
+    tagName: string;
+    skip?: number;
+    take?: number;
+  }) {
     return await this.prisma.post.findMany({
       where: {
         published: true,

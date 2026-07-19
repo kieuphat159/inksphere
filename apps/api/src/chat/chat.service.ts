@@ -434,11 +434,9 @@ export class ChatService {
 
   private cacheConversationMember(member: ConversationMember) {
     const cacheKey = `chat:member:${member.conversationId}:${member.userId}`;
-    this.redisService.set(
-      cacheKey,
-      JSON.stringify(member),
-      this.membershipCacheTtlSeconds,
-    ).catch(() => {});
+    this.redisService
+      .set(cacheKey, JSON.stringify(member), this.membershipCacheTtlSeconds)
+      .catch(() => {});
   }
 
   private validateMessagePayload(data: {
