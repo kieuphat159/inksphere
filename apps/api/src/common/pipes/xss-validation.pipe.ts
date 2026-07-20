@@ -1,11 +1,17 @@
 import { PipeTransform, ArgumentMetadata, Injectable } from '@nestjs/common';
 import DOMPurify from 'isomorphic-dompurify';
 
+const DOMPURIFY_CONFIG = {
+  ADD_ATTR: ['class', 'target', 'rel', 'src', 'alt'],
+  ALLOWED_URI_REGEXP:
+    /^(?:(?:https?|mailto|ftp|tel|file|sms):|[^&:/?#]*(?:[/?#]|$)|data:image\/)/i,
+};
+
 @Injectable()
 export class XssSanitizationPipe implements PipeTransform {
   transform(value: any, _metadata: ArgumentMetadata) {
     if (typeof value === 'string') {
-      return DOMPurify.sanitize(value);
+      return DOMPurify.sanitize(value, DOMPURIFY_CONFIG);
     }
 
     if (this.isPlainObject(value)) {
@@ -21,11 +27,11 @@ export class XssSanitizationPipe implements PipeTransform {
     for (const key of Object.keys(obj)) {
       const val = obj[key];
       if (typeof val === 'string') {
-        result[key] = DOMPurify.sanitize(val);
+        result[key] = DOMPurify.sanitize(val, DOMPURIFY_CONFIG);
       } else if (Array.isArray(val)) {
         result[key] = val.map((item) =>
           typeof item === 'string'
-            ? DOMPurify.sanitize(item)
+            ? DOMPurify.sanitize(item, DOMPURIFY_CONFIG)
             : this.isPlainObject(item)
               ? this.sanitizeObject(item)
               : item,

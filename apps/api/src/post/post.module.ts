@@ -9,4 +9,3 @@ import { RedisModule } from 'src/redis/redis.module';
   providers: [PostResolver, PostService],
 })
 export class PostModule {}
-

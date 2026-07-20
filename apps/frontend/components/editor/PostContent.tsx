@@ -15,7 +15,12 @@ const PostContent = ({ html, className }: Props) => {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const purify = DOMPurify(window);
-      setSanitizedHtml(purify.sanitize(html));
+      setSanitizedHtml(
+        purify.sanitize(html, {
+          ADD_ATTR: ["class", "target", "rel", "src", "alt"],
+          ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|ftp|tel|file|sms):|[^&:/?#]*(?:[/?#]|$)|data:image\/)/i,
+        })
+      );
     }
   }, [html]);
 
