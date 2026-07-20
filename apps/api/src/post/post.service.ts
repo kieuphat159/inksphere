@@ -38,7 +38,23 @@ export class PostService {
     const cacheKey = `posts:feed:${version}:${skip}:${take}`;
     const cached = await this.redisService.get(cacheKey);
     if (cached) {
-      return JSON.parse(cached);
+      const posts = JSON.parse(cached);
+      return posts.map((post: any) => ({
+        ...post,
+        createdAt: post.createdAt ? new Date(post.createdAt) : undefined,
+        updatedAt: post.updatedAt ? new Date(post.updatedAt) : undefined,
+        author: post.author
+          ? {
+              ...post.author,
+              createdAt: post.author.createdAt
+                ? new Date(post.author.createdAt)
+                : undefined,
+              updatedAt: post.author.updatedAt
+                ? new Date(post.author.updatedAt)
+                : undefined,
+            }
+          : undefined,
+      }));
     }
 
     const posts = await this.prisma.post.findMany({
